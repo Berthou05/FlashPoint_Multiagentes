@@ -1,45 +1,22 @@
-"""Top-level plague simulation model declaration."""
+# Import the PlagueDoctorAgent class from the agents module
+# from .agents import PlagueDoctorAgent
 
-from __future__ import annotations
-
-from .board import BoardBuilder
-from .infestation_rules import InfestationRules
-from .plague_doctor import PlagueDoctorAgent
-
+# Necessary imports for the simulation model
+from mesa import Model
+from mesa.space import MultiGrid
 
 class PlagueSimulationModel:
-    def __init__(self, width: int | None = None, height: int | None = None) -> None:
-        pass
+    def __init__(self, width=8, height=10, seed=None):
+        super().__init__(seed)
 
-    def step(self) -> None:
-        pass
+        # Simulation parameters
+        self.grid = MultiGrid(width, height, torus=False)
+        self.running = True
+        self.turn = 0
 
-    def create_doctors(self, count: int) -> list[PlagueDoctorAgent]:
-        pass
+        # Initialize lists to hold doctors
+        self.doctors = []
+        self.
 
-    def add_doctor(self, doctor: PlagueDoctorAgent) -> None:
-        pass
-
-    def start_turn(self) -> None:
-        pass
-
-    def advance_turn(self) -> None:
-        pass
-
-    def end_turn(self) -> None:
-        pass
-
-    def get_current_doctor(self) -> PlagueDoctorAgent | None:
-        pass
-
-    def run_infestation_phase(self) -> None:
-        pass
-
-    def check_game_end(self) -> bool:
-        pass
-
-    def has_won(self) -> bool:
-        pass
-
-    def has_lost(self) -> bool:
+    def step(self):
         pass

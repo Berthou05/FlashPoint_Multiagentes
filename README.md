@@ -3,31 +3,19 @@
 
 
 ### File structure
-``` 
-PlagueDoctors/
-│
-├── server.py
-│
-├── requirements.txt
-│
+
+```
+FlashPoint_Multiagentes/
+├── server.py              # HTTP bridge between Unity and the simulation
+├── requirements.txt       # Python dependencies
 ├── plague_sim/
 │   ├── __init__.py
-│   ├── model.py
-│   ├── constants.py
-│   ├── entities.py
-│   ├── plague_doctor.py
-│   ├── board.py
-│   ├── infestation_rules.py
-│   ├── pathfinding.py
-│   ├── state.py
-│   ├── events.py
-│   │
-│   └── strategies/
-│       ├── __init__.py
-│       ├── random_strategy.py
-│       └── improved_strategy.py
-│
-└── tests/
+│   ├── model.py           # board, rules, turns, infestation and game state
+│   ├── agents.py          # PlagueDoctorAgent behaviour and decisions
+│   └── entities.py        # patients, encounters, walls, doors and rats
+└── LICENSE
 ```
+
+Tests will be added later when the first game mechanics are implemented.
 
 

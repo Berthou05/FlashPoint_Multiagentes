@@ -1,1 +1,0 @@
-"""Movement test placeholders."""

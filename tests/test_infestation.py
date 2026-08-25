@@ -1,1 +1,0 @@
-"""Infestation test placeholders."""
