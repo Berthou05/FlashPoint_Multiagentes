@@ -11,6 +11,7 @@ Los diagramas de estado requeridos para la entrega se encuentran en la carpeta [
 - [Estados de POI y pacientes](./diagramas%20de%20estado/04-poi-y-pacientes.md)
 - [Estados de la infestación](./diagramas%20de%20estado/05-infestacion.md)
 - [Estados de puertas y muros](./diagramas%20de%20estado/06-puertas-y-muros.md)
+- [Acciones y estados del médico de la peste](./diagramas%20de%20estado/07-acciones-del-medico.md)
 
 
 ### File structure
