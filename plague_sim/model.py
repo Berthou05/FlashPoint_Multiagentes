@@ -3,6 +3,7 @@
 from mesa import Model
 from mesa.space import MultiGrid
 
+from .agents import PlagueDoctorAgent
 from .entities import Door, POI, Patient, RatKing, RatSwarm, Wall
 
 
@@ -90,6 +91,7 @@ class PlagueSimulationModel(Model):
         self._setup_house()
         self.create_poi_pool()
         self._setup_initial_entities()
+        self._setup_initial_doctors()
 
     # ==========================================================
     # House boundaries
@@ -336,6 +338,12 @@ class PlagueSimulationModel(Model):
         for position in self.INITIAL_POI_POSITIONS:
             has_patient = self.draw_poi_content()
             self.create_poi(position, has_patient)
+
+    def _setup_initial_doctors(self):
+        """Place one temporary skip-turn Doctor at each exterior entrance."""
+        for position in self.get_exit_positions():
+            doctor = PlagueDoctorAgent(self, strategy="skip")
+            self.place_doctor(doctor, position)
 
     # ==========================================================
     # Infestation
@@ -678,7 +686,7 @@ class PlagueSimulationModel(Model):
         if doctor is None:
             return False
 
-        doctor.start_new_turn()
+        doctor.start_turn()
 
         while doctor.has_actions_remaining() and not self.game_over:
             previous_ap = doctor.action_points

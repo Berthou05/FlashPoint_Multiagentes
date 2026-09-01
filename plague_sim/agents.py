@@ -138,6 +138,10 @@ class PlagueDoctorAgent(mesa.Agent):
         self.action_points = self.MAX_ACTION_POINTS
         self.turn_completed = False
 
+    def has_actions_remaining(self):
+        """Return whether the Doctor can still act during its turn."""
+        return self.action_points > 0 and not self.turn_completed
+
     def end_turn(self):
         """
         Mark the Doctor's turn as completed.
@@ -152,6 +156,8 @@ class PlagueDoctorAgent(mesa.Agent):
         """
         Decide and perform one action.
 
-        Strategy logic will be implemented later.
+        The temporary skip strategy ends immediately so the environment
+        can be tested before decision logic is implemented.
         """
-        pass
+        if self.strategy == "skip":
+            self.end_turn()

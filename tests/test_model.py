@@ -21,6 +21,29 @@ class TestPlagueSimulationModel(unittest.TestCase):
         self.assertTrue(self.model.can_cross((2, 3), (3, 3)))
         self.assertEqual(self.model.house_damage, 2)
 
+    def test_model_starts_four_skip_doctors_at_exterior_doors(self):
+        expected_positions = [(4, 0), (0, 3), (3, 9), (7, 6)]
+
+        self.assertEqual(len(self.model.doctors), 4)
+        self.assertEqual(
+            [doctor.pos for doctor in self.model.doctors],
+            expected_positions,
+        )
+        self.assertEqual(
+            [doctor.strategy for doctor in self.model.doctors],
+            ["skip", "skip", "skip", "skip"],
+        )
+
+    def test_skip_doctor_completes_turn_and_advances_to_next_doctor(self):
+        first_doctor = self.model.doctors[0]
+        second_doctor = self.model.doctors[1]
+
+        self.model.step()
+
+        self.assertEqual(self.model.turn, 1)
+        self.assertTrue(first_doctor.turn_completed)
+        self.assertIs(self.model.get_active_doctor(), second_doctor)
+
     def test_infestation_progresses_from_swarm_to_king_to_outbreak(self):
         position = (2, 2)
 
