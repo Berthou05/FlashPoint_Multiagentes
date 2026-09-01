@@ -7,9 +7,22 @@ from plague_sim.model import PlagueSimulationModel
 model = None
 
 
-def create_model(seed=None):
+def create_model(strategy="skip", num_agents=4, seed=None):
     global model
-    model = PlagueSimulationModel(seed=seed)
+
+    model = PlagueSimulationModel(
+        strategy=strategy,
+        num_agents=num_agents,
+        seed=seed
+    )
+
+
+def get_model():
+    """Return the current model, creating the default state if needed."""
+    if model is None:
+        create_model()
+
+    return model
 
 
 class Server(BaseHTTPRequestHandler):
@@ -35,13 +48,11 @@ class Server(BaseHTTPRequestHandler):
             }).encode('utf-8'))
 
         elif self.path == '/state':
-            if model:
-                self._set_response()
-                self.wfile.write(json.dumps({
-                    "game_state": model.get_state()
-                }).encode('utf-8'))
-            else:
-                self.send_error(400, "Model not initialized")
+            current_model = get_model()
+            self._set_response()
+            self.wfile.write(json.dumps({
+                "game_state": current_model.get_state()
+            }).encode('utf-8'))
 
         else:
             self.send_error(404)
@@ -54,25 +65,29 @@ class Server(BaseHTTPRequestHandler):
         data = json.loads(post_data) if post_data else {}
 
         if self.path == '/step':
-            if model:
-                model.step()
-
-                self._set_response()
-                self.wfile.write(json.dumps({
-                    "status": "Turn completed",
-                    "game_state": model.get_state()
-                }).encode('utf-8'))
-            else:
-                self.send_error(400, "Model not initialized")
-
-        elif self.path == '/reset':
-            seed = data.get('seed')
-
-            create_model(seed)
+            current_model = get_model()
+            current_model.step()
 
             self._set_response()
             self.wfile.write(json.dumps({
-                "status": "Game initialized",
+                "status": "Turn completed",
+                "game_state": current_model.get_state()
+            }).encode('utf-8'))
+
+        elif self.path == '/reset':
+            strategy = data.get('strategy', 'skip')
+            num_agents = data.get('num_agents', 4)
+            seed = data.get('seed')
+
+            create_model(
+                strategy,
+                num_agents,
+                seed
+            )
+
+            self._set_response()
+            self.wfile.write(json.dumps({
+                "status": f"Game initialized with {num_agents} doctor(s)",
                 "game_state": model.get_state()
             }).encode('utf-8'))
 
