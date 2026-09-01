@@ -88,6 +88,7 @@ class PlagueSimulationModel(Model):
 
         # Doctors are Mesa agents, but this list lets the model query them
         # without importing agents.py and creating a circular import.
+        self.active_doctor_index = 0
         self.doctors = []
 
         self.poi_pool = []
@@ -290,15 +291,16 @@ class PlagueSimulationModel(Model):
     # ==========================================================
 
     def place_doctor(self, doctor, position=None):
-        """Place a Doctor outside the house at the start of a game."""
+        """Place a Doctor in front of an exterior door."""
+
         if doctor.pos is not None:
             raise ValueError("Doctor is already on the board.")
 
         if position is None:
-            position = self.random.choice(self.get_exterior_positions())
+            position = self.random.choice(self.DOCTOR_START_POSITIONS)
 
-        if not self.is_exterior_position(position):
-            raise ValueError("Doctors must start outside the house.")
+        if position not in self.DOCTOR_START_POSITIONS:
+            raise ValueError("Doctors must start in front of an exterior door.")
 
         self.grid.place_agent(doctor, position)
 
