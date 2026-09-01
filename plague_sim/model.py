@@ -58,7 +58,14 @@ class PlagueSimulationModel(Model):
         ((4, 2), (4, 3)),
     )
 
-    def __init__(self, width=8, height=10, seed=None):
+    def __init__(
+        self,
+        width=8,
+        height=10,
+        seed=None,
+        strategy="skip",
+        num_agents=4,
+    ):
         # Mesa 3.5 accepts rng and exposes self.random for reproducible choices.
         super().__init__(rng=seed)
 
@@ -81,10 +88,11 @@ class PlagueSimulationModel(Model):
         self.patients_rescued = 0
         self.patients_killed = 0
 
-        # Doctors are Mesa agents, but this list lets the model query them
-        # without importing agents.py and creating a circular import.
         self.doctors = []
         self.active_doctor_index = 0
+
+        self.strategy = strategy
+        self.num_agents = min(max(num_agents, 1), 6)
 
         self.poi_pool = []
 
@@ -340,10 +348,18 @@ class PlagueSimulationModel(Model):
             self.create_poi(position, has_patient)
 
     def _setup_initial_doctors(self):
-        """Place one temporary skip-turn Doctor at each exterior entrance."""
-        for position in self.get_exit_positions():
-            doctor = PlagueDoctorAgent(self, strategy="skip")
-            self.place_doctor(doctor, position)
+        """Create Doctors at exterior entrances."""
+        start_positions = self.get_exit_positions()
+        for i in range(self.num_agents):
+            doctor = PlagueDoctorAgent(
+                self,
+                strategy=self.strategy
+            )
+            position = start_positions[i % len(start_positions)]
+            self.place_doctor(
+                doctor,
+                position
+            )
 
     # ==========================================================
     # Infestation
