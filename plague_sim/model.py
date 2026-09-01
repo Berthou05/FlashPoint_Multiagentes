@@ -57,13 +57,6 @@ class PlagueSimulationModel(Model):
         ((4, 2), (4, 3)),
     )
 
-    DOCTOR_START_POSITIONS = (
-        (4, 0),
-        (0, 3),
-        (3, 9),
-        (7, 6),
-    )
-
     def __init__(self, width=8, height=10, seed=None):
         # Mesa 3.5 accepts rng and exposes self.random for reproducible choices.
         super().__init__(rng=seed)
@@ -80,6 +73,7 @@ class PlagueSimulationModel(Model):
 
         self.house_damage = 0
         self.turn = 0
+        self.running = True
         self.game_over = False
         self.game_won = False
 
@@ -88,8 +82,8 @@ class PlagueSimulationModel(Model):
 
         # Doctors are Mesa agents, but this list lets the model query them
         # without importing agents.py and creating a circular import.
-        self.active_doctor_index = 0
         self.doctors = []
+        self.active_doctor_index = 0
 
         self.poi_pool = []
 
@@ -219,7 +213,7 @@ class PlagueSimulationModel(Model):
         return self.is_inside_board(position) and not self.is_interior_position(position)
 
     def get_exterior_positions(self):
-        """Return every legal starting cell for a Doctor."""
+        """Return every exterior cell on the board."""
         return [
             (x, y)
             for x in range(self.width)
@@ -291,15 +285,21 @@ class PlagueSimulationModel(Model):
     # ==========================================================
 
     def place_doctor(self, doctor, position=None):
-        """Place a Doctor in front of an exterior door."""
-
+        """Place a Doctor in front of one of the exterior doors."""
         if doctor.pos is not None:
             raise ValueError("Doctor is already on the board.")
 
-        if position is None:
-            position = self.random.choice(self.DOCTOR_START_POSITIONS)
+        start_positions = self.get_exit_positions()
 
-        if position not in self.DOCTOR_START_POSITIONS:
+        if position is None:
+            available = [
+                start
+                for start in start_positions
+                if not self.get_doctors_at(start)
+            ]
+            position = self.random.choice(available or start_positions)
+
+        if position not in start_positions:
             raise ValueError("Doctors must start in front of an exterior door.")
 
         self.grid.place_agent(doctor, position)
@@ -664,16 +664,62 @@ class PlagueSimulationModel(Model):
         if self.patients_rescued >= self.PATIENTS_TO_RESCUE:
             self.finish_game(True)
 
-    def advance_turn(self):
+    def get_active_doctor(self):
+        """Return the Doctor whose turn is currently active."""
+        if not self.doctors:
+            return None
+
+        return self.doctors[self.active_doctor_index]
+
+    def run_doctor_turn(self):
+        """Run all actions for the active Doctor."""
+        doctor = self.get_active_doctor()
+
+        if doctor is None:
+            return False
+
+        doctor.start_new_turn()
+
+        while doctor.has_actions_remaining() and not self.game_over:
+            previous_ap = doctor.action_points
+            doctor.step()
+
+            # Prevent an agent bug from creating an infinite turn.
+            if (
+                doctor.action_points == previous_ap
+                and doctor.has_actions_remaining()
+            ):
+                raise RuntimeError(
+                    f"Doctor {doctor.unique_id} did not spend AP or end its turn."
+                )
+
+        doctor.end_turn()
+        return True
+
+    def advance_active_doctor(self):
+        """Select the next Doctor in turn order."""
+        if not self.doctors:
+            return
+
+        self.active_doctor_index = (
+            self.active_doctor_index + 1
+        ) % len(self.doctors)
+
+    def step(self):
+        """Run one complete turn: one Doctor followed by the environment."""
         if self.game_over:
             return
 
-        self.turn += 1
-        self.run_environment_phase()
+        if not self.run_doctor_turn():
+            return
 
-    def step(self):
-        """Mesa calls this method to advance one environment turn."""
-        self.advance_turn()
+        self.turn += 1
+
+        if not self.game_over:
+            self.run_environment_phase()
+
+        if not self.game_over:
+            self.advance_active_doctor()
 
     # ==========================================================
     # Unity state
@@ -697,10 +743,15 @@ class PlagueSimulationModel(Model):
                 boundary_state["is_open"] = boundary.is_open
                 doors.append(boundary_state)
 
+        active_doctor = self.get_active_doctor()
+
         state = {
             "width": self.width,
             "height": self.height,
             "turn": self.turn,
+            "active_doctor_id": (
+                active_doctor.unique_id if active_doctor is not None else None
+            ),
             "running": self.running,
             "game_over": self.game_over,
             "game_won": self.game_won,
