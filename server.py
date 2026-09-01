@@ -1,19 +1,21 @@
 import json
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 from plague_sim.model import PlagueSimulationModel
 
 
+API_VERSION = "v1"
 model = None
 
 
-def create_model(strategy="skip", num_agents=4, seed=None):
+def create_model(strategy="skip", num_agents=1, seed=None):
     global model
 
     model = PlagueSimulationModel(
         strategy=strategy,
         num_agents=num_agents,
-        seed=seed
+        seed=seed,
     )
 
 
@@ -27,81 +29,90 @@ def get_model():
 
 class Server(BaseHTTPRequestHandler):
 
-    def _set_response(self, content_type='application/json'):
+    def _set_response(self, content_type="application/json"):
         self.send_response(200)
-        self.send_header('Content-type', content_type)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header("Content-type", content_type)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
+    def _send_game_response(self, status, events=None):
+        self._set_response()
+        response_data = {
+            "api_version": API_VERSION,
+            "status": status,
+            "events": events or [],
+            "game_state": get_model().get_state(),
+        }
+        self.wfile.write(json.dumps(response_data).encode("utf-8"))
 
     def do_OPTIONS(self):
         self._set_response()
 
     def do_GET(self):
-        global model
-
-        if self.path == '/':
+        if self.path == "/":
             self._set_response()
             self.wfile.write(json.dumps({
-                "status": "PlaguePoint server running"
-            }).encode('utf-8'))
+                "api_version": API_VERSION,
+                "status": "PlaguePoint server running",
+            }).encode("utf-8"))
+            return
 
-        elif self.path == '/state':
-            current_model = get_model()
-            self._set_response()
-            self.wfile.write(json.dumps({
-                "game_state": current_model.get_state()
-            }).encode('utf-8'))
+        if self.path == "/state":
+            self._send_game_response("State retrieved")
+            return
 
-        else:
-            self.send_error(404)
+        self.send_error(404)
 
     def do_POST(self):
-        global model
-
-        content_length = int(self.headers.get('Content-Length', 0))
+        content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
-        data = json.loads(post_data) if post_data else {}
 
-        if self.path == '/step':
-            current_model = get_model()
-            current_model.step()
+        try:
+            data = json.loads(post_data) if post_data else {}
+        except json.JSONDecodeError:
+            self.send_error(400, "Invalid JSON")
+            return
 
-            self._set_response()
-            self.wfile.write(json.dumps({
-                "status": "Turn completed",
-                "game_state": current_model.get_state()
-            }).encode('utf-8'))
+        if self.path == "/reset":
+            strategy = data.get("strategy", "skip")
+            num_agents = data.get("num_agents", 1)
+            seed = data.get("seed")
+            create_model(strategy, num_agents, seed)
+            self._send_game_response("Game reset")
+            return
 
-        elif self.path == '/reset':
-            strategy = data.get('strategy', 'skip')
-            num_agents = data.get('num_agents', 4)
-            seed = data.get('seed')
+        current_model = get_model()
 
-            create_model(
-                strategy,
-                num_agents,
-                seed
-            )
+        try:
+            if self.path == "/step_doctor":
+                events = current_model.step_doctor()
+                self._send_game_response("Doctor action completed", events)
+                return
 
-            self._set_response()
-            self.wfile.write(json.dumps({
-                "status": f"Game initialized with {num_agents} doctor(s)",
-                "game_state": model.get_state()
-            }).encode('utf-8'))
+            if self.path == "/step_environment":
+                events = current_model.step_environment()
+                self._send_game_response("Environment phase completed", events)
+                return
 
-        else:
-            self.send_error(404)
+            if self.path in ("/step_complete_turn", "/step"):
+                events = current_model.step_complete_turn()
+                self._send_game_response("Complete turn executed", events)
+                return
+        except (ValueError, RuntimeError) as error:
+            self.send_error(409, str(error))
+            return
+
+        self.send_error(404)
 
 
 def run(server_class=HTTPServer, handler_class=Server, port=8585):
     logging.basicConfig(level=logging.INFO)
-
-    server_address = ('', port)
+    server_address = ("", port)
     httpd = server_class(server_address, handler_class)
 
-    logging.info(f"Starting PlaguePoint server on port {port}...")
+    logging.info("Starting PlaguePoint server on port %s...", port)
 
     try:
         httpd.serve_forever()
@@ -112,5 +123,5 @@ def run(server_class=HTTPServer, handler_class=Server, port=8585):
     logging.info("Stopping PlaguePoint server...")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

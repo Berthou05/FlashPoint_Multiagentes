@@ -21,20 +21,21 @@ class TestPlagueSimulationModel(unittest.TestCase):
         self.assertTrue(self.model.can_cross((2, 3), (3, 3)))
         self.assertEqual(self.model.house_damage, 2)
 
-    def test_model_starts_four_skip_doctors_at_exterior_doors(self):
-        expected_positions = [(4, 0), (0, 3), (3, 9), (7, 6)]
+    def test_model_starts_one_skip_doctor_at_an_exterior_door(self):
+        expected_positions = [(4, 0)]
 
-        self.assertEqual(len(self.model.doctors), 4)
+        self.assertEqual(len(self.model.doctors), 1)
         self.assertEqual(
             [doctor.pos for doctor in self.model.doctors],
             expected_positions,
         )
         self.assertEqual(
             [doctor.strategy for doctor in self.model.doctors],
-            ["skip", "skip", "skip", "skip"],
+            ["skip"],
         )
 
     def test_skip_doctor_completes_turn_and_advances_to_next_doctor(self):
+        self.model = PlagueSimulationModel(seed=7, num_agents=2)
         first_doctor = self.model.doctors[0]
         second_doctor = self.model.doctors[1]
 
@@ -43,6 +44,69 @@ class TestPlagueSimulationModel(unittest.TestCase):
         self.assertEqual(self.model.turn, 1)
         self.assertTrue(first_doctor.turn_completed)
         self.assertIs(self.model.get_active_doctor(), second_doctor)
+
+    def test_reset_starts_doctor_phase_without_events(self):
+        self.assertEqual(self.model.phase, "doctor")
+        self.assertFalse(self.model.doctor_turn_started)
+        self.assertEqual(self.model.turn, 0)
+        self.assertEqual(self.model.get_events(), [])
+
+    def test_step_doctor_executes_one_action_and_enters_environment_phase(self):
+        events = self.model.step_doctor()
+
+        self.assertEqual(self.model.turn, 0)
+        self.assertEqual(self.model.phase, "environment")
+        self.assertEqual([event["sequence"] for event in events], [1, 2])
+        self.assertEqual(
+            [event["type"] for event in events],
+            ["doctor_turn_started", "doctor_turn_ended"],
+        )
+
+    def test_step_environment_finishes_turn_and_returns_to_doctor_phase(self):
+        self.model.step_doctor()
+
+        events = self.model.step_environment()
+
+        self.assertEqual(self.model.turn, 1)
+        self.assertEqual(self.model.phase, "doctor")
+        self.assertFalse(self.model.doctor_turn_started)
+        self.assertEqual(events[0]["type"], "environment_phase_started")
+        self.assertEqual(events[-1]["type"], "environment_phase_ended")
+        self.assertEqual(
+            [event["sequence"] for event in events],
+            list(range(1, len(events) + 1)),
+        )
+
+    def test_step_environment_requires_environment_phase(self):
+        with self.assertRaises(ValueError):
+            self.model.step_environment()
+
+    def test_complete_turn_combines_doctor_and_environment_events(self):
+        events = self.model.step_complete_turn()
+
+        self.assertEqual(self.model.turn, 1)
+        self.assertEqual(self.model.phase, "doctor")
+        self.assertEqual(events[0]["type"], "doctor_turn_started")
+        self.assertIn("environment_phase_started", [event["type"] for event in events])
+        self.assertEqual(
+            [event["sequence"] for event in events],
+            list(range(1, len(events) + 1)),
+        )
+
+    def test_state_uses_v1_fields_without_internal_game_won(self):
+        state = self.model.get_state()
+
+        self.assertEqual(state["phase"], "doctor")
+        self.assertIn("game_result", state)
+        self.assertNotIn("game_won", state)
+        self.assertTrue(all(isinstance(item, dict) for item in state["rat_kings"]))
+        self.assertEqual(set(state["doctors"][0]), {
+            "id",
+            "position",
+            "action_points",
+            "strategy",
+            "carried_patient_id",
+        })
 
     def test_infestation_progresses_from_swarm_to_king_to_outbreak(self):
         position = (2, 2)
