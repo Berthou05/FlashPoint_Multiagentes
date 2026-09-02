@@ -40,6 +40,7 @@ public class DoorData
     public int id;
     public PositionData cell_a;
     public PositionData cell_b;
+    public int damage;
     public bool is_open;
     public bool is_destroyed;
 }
