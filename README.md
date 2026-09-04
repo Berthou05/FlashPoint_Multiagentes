@@ -28,6 +28,40 @@ FlashPoint_Multiagentes/
 └── LICENSE
 ```
 
-Tests will be added later when the first game mechanics are implemented.
+La suite de pruebas vive en `tests/` y cubre las reglas básicas, las fases y
+los endpoints HTTP.
+
+## API v1
+
+Inicia el servidor con `python server.py` en el puerto `8585`. Las respuestas
+de simulación tienen esta forma:
+
+```json
+{
+  "api_version": "v1",
+  "state_version": 0,
+  "events": [],
+  "state": {}
+}
+```
+
+Endpoints disponibles:
+
+- `GET /state`: devuelve el snapshot actual. Si aún no existe un modelo, crea
+  el estado inicial.
+- `POST /reset`: reinicia el modelo. Acepta `strategy`, `num_agents` y `seed`.
+- `POST /step_doctor`: ejecuta el turno completo del Doctor activo y devuelve
+  sus eventos ordenados en una sola respuesta.
+- `POST /step_environment`: ejecuta toda la fase ambiental.
+- `POST /step_complete_turn`: termina las acciones restantes del Doctor y
+  ejecuta la fase ambiental.
+- `POST /step`: alias de `/step_complete_turn`.
+
+`state.phase` puede ser `doctor`, `environment` o `finished`. El campo
+`turn` cuenta únicamente turnos completos terminados. Unity debe reproducir
+`events` por `sequence` y usar `state` como snapshot final. `state_version`
+se reinicia en 0, aumenta una vez por cada fase ejecutada y no cambia al usar
+`GET /state`. Los campos de entidad se exportan con coordenadas planas `x`,
+`y`; cuando un médico no carga paciente, `carried_patient_id` vale `-1`.
 
 

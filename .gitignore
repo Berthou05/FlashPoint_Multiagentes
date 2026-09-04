@@ -9,7 +9,32 @@ Unity/[Oo]bj/
 Unity/[Ll]ogs/
 Unity/[Uu]ser[Ss]ettings/
 Unity/[Mm]emoryCaptures/
+Unity/[Uu]nityGenerated/
+Unity/[Ee]xportedObj/
+Unity/[Bb]uild/
+Unity/[Bb]uilds/
+Unity/[Aa]ssetStoreTools*/
+
+# Unity and Visual Studio generated project files
+.vs/
+Unity/.vs/
+*.csproj
+*.sln
+*.slnx
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.unityproj
+*.suo
 
 # macOS
 .DS_Store
 **/.DS_Store
+
+/docs/
