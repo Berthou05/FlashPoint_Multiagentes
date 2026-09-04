@@ -78,6 +78,8 @@ class PlagueSimulationModel(Model):
 
         # Walls and Doors live between cells, not inside the MultiGrid.
         self.boundaries = {}
+        self.boundary_ids = {}
+        self.next_boundary_id = 1
 
         self.house_damage = 0
         self.turn = 0
@@ -111,11 +113,18 @@ class PlagueSimulationModel(Model):
         self.events = []
 
     def emit_event(self, event_type, **data):
-        event = {
-            "sequence": len(self.events) + 1,
-            "phase": self.phase,
-            "type": event_type,
-        }
+        """Store one Unity-ready event in the order it occurred."""
+        event = {"sequence": len(self.events) + 1, "type": event_type}
+        if "doctor_id" in data:
+            data["id"] = data.pop("doctor_id")
+        if "remaining_ap" in data:
+            data["action_points"] = data.pop("remaining_ap")
+        if "position" in data:
+            data["x"], data["y"] = data.pop("position")
+        if "from_position" in data:
+            data["from_x"], data["from_y"] = data.pop("from_position")
+        if "to_position" in data:
+            data["to_x"], data["to_y"] = data.pop("to_position")
         event.update(data)
         self.events.append(event)
 
@@ -133,11 +142,23 @@ class PlagueSimulationModel(Model):
 
     def add_wall(self, cell_a, cell_b):
         """Place a Wall between two neighboring cells."""
-        self.boundaries[self.edge_key(cell_a, cell_b)] = Wall()
+        key = self.edge_key(cell_a, cell_b)
+        self.boundaries[key] = Wall()
+        self.boundary_ids.setdefault(key, self.next_boundary_id)
+        if self.boundary_ids[key] == self.next_boundary_id:
+            self.next_boundary_id += 1
 
     def add_door(self, cell_a, cell_b, is_open=False):
         """Place a Door, replacing a Wall on the same edge if needed."""
-        self.boundaries[self.edge_key(cell_a, cell_b)] = Door(is_open)
+        key = self.edge_key(cell_a, cell_b)
+        self.boundaries[key] = Door(is_open)
+        self.boundary_ids.setdefault(key, self.next_boundary_id)
+        if self.boundary_ids[key] == self.next_boundary_id:
+            self.next_boundary_id += 1
+
+    def get_boundary_id(self, cell_a, cell_b):
+        """Return the persistent Unity ID for a wall or door."""
+        return self.boundary_ids[self.edge_key(cell_a, cell_b)]
 
     def get_boundary(self, cell_a, cell_b):
         """Return the Wall, Door, or None between two cells."""
@@ -170,17 +191,22 @@ class PlagueSimulationModel(Model):
         was_destroyed = boundary.is_destroyed
         damage_added = boundary.take_damage()
 
-        cells = [list(cell_a), list(cell_b)]
         if damage_added and isinstance(boundary, Wall):
             self.emit_event(
                 "wall_damaged",
-                cells=cells,
+                id=self.get_boundary_id(cell_a, cell_b),
                 damage=boundary.damage,
             )
             if not was_destroyed and boundary.is_destroyed:
-                self.emit_event("wall_destroyed", cells=cells)
+                self.emit_event(
+                    "wall_destroyed",
+                    id=self.get_boundary_id(cell_a, cell_b),
+                )
         elif not was_destroyed and boundary.is_destroyed:
-            self.emit_event("door_destroyed", cells=cells)
+            self.emit_event(
+                "door_destroyed",
+                id=self.get_boundary_id(cell_a, cell_b),
+            )
 
         # Only walls add to the building's 24 structural damage points.
         if isinstance(boundary, Wall):
@@ -368,7 +394,7 @@ class PlagueSimulationModel(Model):
         self.grid.move_agent(doctor, target)
         self.emit_event(
             "doctor_moved",
-            doctor_id=doctor.unique_id,
+            id=doctor.unique_id,
             from_position=list(previous),
             to_position=list(target),
             remaining_ap=doctor.action_points,
@@ -814,15 +840,8 @@ class PlagueSimulationModel(Model):
             self.active_doctor_index + 1
         ) % len(self.doctors)
 
-    def step_doctor(self, clear_events=True):
-        """Execute exactly one action of the active Doctor."""
-        if clear_events:
-            self.clear_events()
-
-        if self.game_over:
-            self.phase = "finished"
-            return self.get_events()
-
+    def step_doctor_action(self):
+        """Execute exactly one action of the active Doctor internally."""
         if self.phase != "doctor":
             raise ValueError("Current phase is not doctor.")
 
@@ -867,6 +886,21 @@ class PlagueSimulationModel(Model):
         if self.game_over:
             self.phase = "finished"
 
+    def step_doctor(self, clear_events=True):
+        """Execute the complete turn of the active Doctor."""
+        if clear_events:
+            self.clear_events()
+
+        if self.game_over:
+            self.phase = "finished"
+            return self.get_events()
+
+        if self.phase != "doctor":
+            raise ValueError("Current phase is not doctor.")
+
+        while self.phase == "doctor" and not self.game_over:
+            self.step_doctor_action()
+
         return self.get_events()
 
     def step_environment(self, clear_events=True):
@@ -881,11 +915,11 @@ class PlagueSimulationModel(Model):
         if self.phase != "environment":
             raise ValueError("Current phase is not environment.")
 
-        self.emit_event("environment_phase_started")
+        self.emit_event("environment_started")
         self.run_environment_phase()
 
         if not self.game_over:
-            self.emit_event("environment_phase_ended")
+            self.emit_event("environment_ended")
             self.turn += 1
             self.advance_active_doctor()
             self.doctor_turn_started = False
@@ -903,7 +937,7 @@ class PlagueSimulationModel(Model):
             self.phase = "finished"
             return self.get_events()
 
-        while self.phase == "doctor" and not self.game_over:
+        if self.phase == "doctor" and not self.game_over:
             self.step_doctor(clear_events=False)
 
         if self.phase == "environment" and not self.game_over:
@@ -925,16 +959,22 @@ class PlagueSimulationModel(Model):
         doors = []
 
         for cells, boundary in self.boundaries.items():
+            cell_a, cell_b = cells
             boundary_state = {
-                "cells": [list(cells[0]), list(cells[1])],
+                "id": self.boundary_ids[cells],
+                "ax": cell_a[0],
+                "ay": cell_a[1],
+                "bx": cell_b[0],
+                "by": cell_b[1],
                 "damage": boundary.damage,
-                "is_destroyed": boundary.is_destroyed,
+                "destroyed": boundary.is_destroyed,
             }
 
             if isinstance(boundary, Wall):
                 walls.append(boundary_state)
             else:
-                boundary_state["is_open"] = boundary.is_open
+                del boundary_state["damage"]
+                boundary_state["open"] = boundary.is_open
                 doors.append(boundary_state)
 
         active_doctor = self.get_active_doctor()
@@ -945,16 +985,12 @@ class PlagueSimulationModel(Model):
             "turn": self.turn,
             "phase": self.phase,
             "active_doctor_id": (
-                active_doctor.unique_id if active_doctor is not None else None
+                active_doctor.unique_id if active_doctor is not None else -1
             ),
-            "running": self.running,
-            "game_over": self.game_over,
-            "game_result": (
-                "victory"
-                if self.game_over and self.game_won
-                else "defeat"
-                if self.game_over
-                else None
+            "game_status": (
+                "victory" if self.game_over and self.game_won
+                else "defeat" if self.game_over
+                else "running"
             ),
             "house_damage": self.house_damage,
             "patients_rescued": self.patients_rescued,
@@ -976,25 +1012,29 @@ class PlagueSimulationModel(Model):
             if isinstance(entity, RatSwarm):
                 state["rat_swarms"].append({
                     "id": entity.unique_id,
-                    "position": list(entity.pos),
+                    "x": entity.pos[0],
+                    "y": entity.pos[1],
                 })
 
             elif isinstance(entity, RatKing):
                 state["rat_kings"].append({
                     "id": entity.unique_id,
-                    "position": list(entity.pos),
+                    "x": entity.pos[0],
+                    "y": entity.pos[1],
                 })
 
             elif isinstance(entity, POI):
                 state["pois"].append({
                     "id": entity.unique_id,
-                    "position": list(entity.pos),
+                    "x": entity.pos[0],
+                    "y": entity.pos[1],
                 })
 
             elif isinstance(entity, Patient):
                 state["patients"].append({
                     "id": entity.unique_id,
-                    "position": list(entity.pos),
+                    "x": entity.pos[0],
+                    "y": entity.pos[1],
                 })
 
         for doctor in self.doctors:
@@ -1005,11 +1045,11 @@ class PlagueSimulationModel(Model):
 
             state["doctors"].append({
                 "id": doctor.unique_id,
-                "position": list(doctor.pos),
-                "action_points": getattr(doctor, "action_points", None),
-                "strategy": getattr(doctor, "strategy", None),
+                "x": doctor.pos[0],
+                "y": doctor.pos[1],
+                "action_points": doctor.action_points,
                 "carried_patient_id": (
-                    carried_patient.unique_id if carried_patient is not None else None
+                    carried_patient.unique_id if carried_patient is not None else -1
                 ),
             })
 

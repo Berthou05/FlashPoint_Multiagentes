@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -6,7 +7,7 @@ public class SimulationConnection : MonoBehaviour
 {
     // Dirección donde está corriendo el servidor de Python/Mesa.
     // Si después usan otro puerto, solo cambienlo aquí
-    public string baseUrl = "http://127.0.0.1:5000";
+    public string baseUrl = "http://127.0.0.1:8585";
 
     // Aquí guardamos la última respuesta completa que llegó de Python.
     // Incluye tanto los eventos como el estado final.
@@ -22,12 +23,51 @@ public class SimulationConnection : MonoBehaviour
 
     public IEnumerator GetState()
     {
-        // Forma la dirección url:
-    
-        string url = baseUrl + "/state";
+        return SendRequest("/state", UnityWebRequest.kHttpVerbGET);
+    }
 
-        // Prepara una petición GET al servidor de Python
-        UnityWebRequest request = UnityWebRequest.Get(url);
+
+    // Estas tres funciones pueden conectarse directamente a botones de Unity.
+    // El servidor decide todas las acciones; Unity solo solicita una fase.
+    public IEnumerator ResetSimulation(string strategy = "skip", int numAgents = 1, int seed = 0)
+    {
+        ResetRequest reset = new ResetRequest();
+        reset.strategy = strategy;
+        reset.num_agents = numAgents;
+        reset.seed = seed;
+
+        return SendRequest(
+            "/reset",
+            UnityWebRequest.kHttpVerbPOST,
+            JsonUtility.ToJson(reset)
+        );
+    }
+
+
+    public IEnumerator StepDoctor()
+    {
+        return SendRequest("/step_doctor", UnityWebRequest.kHttpVerbPOST, "{}");
+    }
+
+
+    public IEnumerator StepEnvironment()
+    {
+        return SendRequest("/step_environment", UnityWebRequest.kHttpVerbPOST, "{}");
+    }
+
+
+    private IEnumerator SendRequest(string endpoint, string method, string body = null)
+    {
+        string url = baseUrl + endpoint;
+
+        UnityWebRequest request = new UnityWebRequest(url, method);
+        request.downloadHandler = new DownloadHandlerBuffer();
+
+        if (body != null)
+        {
+            request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));
+            request.SetRequestHeader("Content-Type", "application/json");
+        }
 
         // Espera la respuesta sin congelar Unity
         yield return request.SendWebRequest();
@@ -103,4 +143,13 @@ public class SimulationConnection : MonoBehaviour
         // Cerramos la petición cuando ya terminamos de utilizarla
         request.Dispose();
     }
+}
+
+
+[System.Serializable]
+public class ResetRequest
+{
+    public string strategy;
+    public int num_agents;
+    public int seed;
 }
