@@ -38,3 +38,4 @@ Unity/.vs/
 **/.DS_Store
 
 /docs/
+.worktrees/
