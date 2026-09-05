@@ -64,4 +64,17 @@ se reinicia en 0, aumenta una vez por cada fase ejecutada y no cambia al usar
 `GET /state`. Los campos de entidad se exportan con coordenadas planas `x`,
 `y`; cuando un médico no carga paciente, `carried_patient_id` vale `-1`.
 
+## Simulación sin Unity
+
+La estrategia `random` selecciona una acción legal al azar y juega una acción
+por llamada interna. Para ejecutar una partida completa y ver sus datos:
+
+```text
+python run_simulation.py --strategy random --num-agents 2 --seed 7 --max-turns 500
+```
+
+El resultado JSON indica la causa de fin (`rescued_7`, `patients_killed_4` o
+`collapse`), turnos iniciados, rescates, muertes contabilizadas antes del fin,
+daño estructural y `truncated` cuando se alcanza el límite sin terminar.
+
 

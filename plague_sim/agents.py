@@ -1,6 +1,6 @@
 import mesa
 
-from .entities import Wall, Door
+from .entities import Door, RatKing, RatSwarm, Wall
 
 
 class PlagueDoctorAgent(mesa.Agent):
@@ -22,6 +22,7 @@ class PlagueDoctorAgent(mesa.Agent):
         "treat_rat_king": 2,
         "pick_up_patient": 1,
         "drop_patient": 1,
+        "move_carrying_patient": 2,
     }
 
     # ========================================================
@@ -75,16 +76,25 @@ class PlagueDoctorAgent(mesa.Agent):
 
     def get_transition_cost(self, current, target):
         """
-        Return the AP cost required to move from one neighboring
-        cell to another.
+        Return the cost of the immediate movement between two cells.
 
-        This method is also intended to be used by pathfinding.
+        Opening a closed door is a separate action.  Keeping that cost out
+        of this method makes the route later produced by UCS executable as
+        an explicit sequence of actions.
         """
+
+        if not self.model.are_neighbors(current, target):
+            return float("inf")
 
         boundary = self.model.get_boundary(current, target)
 
-        # Normal movement.
-        cost = self.get_action_cost("move")
+        # Carrying a Patient makes every movement action more expensive.
+        cost_name = (
+            "move_carrying_patient"
+            if self.carried_patient is not None
+            else "move"
+        )
+        cost = self.get_action_cost(cost_name)
 
         # No Wall or Door between the cells.
         if boundary is None:
@@ -107,12 +117,8 @@ class PlagueDoctorAgent(mesa.Agent):
             if boundary.is_passable:
                 return cost
 
-            # Closed Door:
-            # opening + moving through it.
-            return (
-                self.get_action_cost("open_door")
-                + cost
-            )
+            # A closed door must be opened before moving.
+            return float("inf")
 
         return float("inf")
 
@@ -149,6 +155,165 @@ class PlagueDoctorAgent(mesa.Agent):
         self.turn_completed = True
 
     # ========================================================
+    # DOCTOR ACTIONS
+    # ========================================================
+
+    def move(self, target):
+        """Move one cell when the model accepts the movement."""
+        cost = self.get_transition_cost(self.pos, target)
+        if cost == float("inf") or not self.model.is_action_legal(
+            self, {"kind": "move", "target": target}
+        ):
+            return False
+        if not self.spend_ap(cost):
+            return False
+        return self.model.move_doctor(self, target)
+
+    def open_door(self, target):
+        """Open the adjacent closed door and pay one AP."""
+        action = {"kind": "open_door", "target": target}
+        if not self.model.is_action_legal(self, action):
+            return False
+        if not self.spend_ap(self.get_action_cost("open_door")):
+            return False
+        return self.model.open_door(self.pos, target)
+
+    def close_door(self, target):
+        """Close the adjacent open door and pay one AP."""
+        action = {"kind": "close_door", "target": target}
+        if not self.model.is_action_legal(self, action):
+            return False
+        if not self.spend_ap(self.get_action_cost("close_door")):
+            return False
+        return self.model.close_door(self.pos, target)
+
+    def damage_wall(self, target):
+        """Damage an adjacent intact wall and pay one AP."""
+        action = {"kind": "damage_wall", "target": target}
+        if not self.model.is_action_legal(self, action):
+            return False
+        if not self.spend_ap(self.get_action_cost("damage_wall")):
+            return False
+        self.model.damage_boundary(self.pos, target)
+        return True
+
+    def _treat_infestation(self, target_id, action_name):
+        """Remove one reachable infestation after paying its action cost."""
+        action = {"kind": action_name, "target": target_id}
+        if not self.model.is_action_legal(self, action):
+            return False
+        if not self.spend_ap(self.get_action_cost(action_name)):
+            return False
+        infestation = self.model.get_agent_by_id(target_id)
+        self.model.remove_infestation(infestation)
+        return True
+
+    def treat_rat_swarm(self, target_id):
+        """Treat a reachable RatSwarm."""
+        return self._treat_infestation(target_id, "treat_rat_swarm")
+
+    def treat_rat_king(self, target_id):
+        """Treat a reachable RatKing."""
+        return self._treat_infestation(target_id, "treat_rat_king")
+
+    def pick_up_patient(self, target_id):
+        """Pick up the Patient in the Doctor's current cell."""
+        action = {"kind": "pick_up_patient", "target": target_id}
+        if not self.model.is_action_legal(self, action):
+            return False
+        if not self.spend_ap(self.get_action_cost("pick_up_patient")):
+            return False
+        patient = self.model.get_agent_by_id(target_id)
+        self.model.grid.remove_agent(patient)
+        self.carried_patient = patient
+        self.model.emit_event("patient_picked_up", id=patient.unique_id)
+        return True
+
+    def drop_patient(self):
+        """Drop a carried Patient, or rescue it when outside the house."""
+        if not self.model.is_action_legal(
+            self, {"kind": "drop_patient", "target": None}
+        ):
+            return False
+        if not self.spend_ap(self.get_action_cost("drop_patient")):
+            return False
+
+        patient = self.carried_patient
+        if self.model.is_exterior_position(self.pos):
+            self.model.rescue_patient(patient)
+        else:
+            self.model.grid.place_agent(patient, self.pos)
+            self.carried_patient = None
+            self.model.emit_event(
+                "patient_dropped",
+                id=patient.unique_id,
+                position=list(self.pos),
+            )
+        return True
+
+    def get_action_ap_cost(self, action):
+        """Return the AP cost of one concrete action dictionary."""
+        if action["kind"] == "move":
+            return self.get_transition_cost(self.pos, action["target"])
+        return self.get_action_cost(action["kind"])
+
+    def get_available_actions(self):
+        """Return every legal action the Doctor can still afford.
+
+        The order is stable so a seed always reproduces the same random
+        choices, even when Mesa changes an internal collection order.
+        """
+        actions = []
+
+        for target in sorted(self.model.get_neighbors(self.pos)):
+            actions.extend([
+                {"kind": "move", "target": target},
+                {"kind": "open_door", "target": target},
+                {"kind": "close_door", "target": target},
+                {"kind": "damage_wall", "target": target},
+            ])
+
+        for entity in sorted(self.model.agents, key=lambda item: item.unique_id):
+            if isinstance(entity, RatSwarm):
+                actions.append({"kind": "treat_rat_swarm", "target": entity.unique_id})
+            elif isinstance(entity, RatKing):
+                actions.append({"kind": "treat_rat_king", "target": entity.unique_id})
+
+        patient = self.model.get_patient_at(self.pos)
+        if patient is not None:
+            actions.append({"kind": "pick_up_patient", "target": patient.unique_id})
+        actions.append({"kind": "drop_patient", "target": None})
+
+        return [
+            action
+            for action in actions
+            if self.model.is_action_legal(self, action)
+            and self.can_afford(self.get_action_ap_cost(action))
+        ]
+
+    def execute_action(self, action):
+        """Dispatch one already selected action to its concrete method."""
+        kind = action["kind"]
+        target = action["target"]
+        if kind == "move":
+            return self.move(target)
+        if kind == "open_door":
+            return self.open_door(target)
+        if kind == "close_door":
+            return self.close_door(target)
+        if kind == "damage_wall":
+            return self.damage_wall(target)
+        if kind == "treat_rat_swarm":
+            return self.treat_rat_swarm(target)
+        if kind == "treat_rat_king":
+            return self.treat_rat_king(target)
+        if kind == "pick_up_patient":
+            return self.pick_up_patient(target)
+        if kind == "drop_patient":
+            return self.drop_patient()
+        return False
+
+    # ========================================================
     # AGENT BEHAVIOUR
     # ========================================================
 
@@ -156,8 +321,21 @@ class PlagueDoctorAgent(mesa.Agent):
         """
         Decide and perform one action.
 
-        The temporary skip strategy ends immediately so the environment
-        can be tested before decision logic is implemented.
+        Skip ends immediately. Random chooses exactly one legal action.
         """
         if self.strategy == "skip":
             self.end_turn()
+            return
+
+        if self.strategy == "random":
+            actions = self.get_available_actions()
+            if not actions:
+                self.end_turn()
+                return
+
+            action = self.model.random.choice(actions)
+            if not self.execute_action(action):
+                raise RuntimeError("A selected legal Doctor action could not execute.")
+            return
+
+        raise ValueError(f"Unsupported Doctor strategy: {self.strategy}")

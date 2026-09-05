@@ -20,6 +20,7 @@ class PlagueSimulationModel(Model):
     TOTAL_PATIENTS = 10
     TOTAL_EMPTY_POIS = 5
     ACTIVE_POIS_TARGET = 3
+    SUPPORTED_STRATEGIES = ("skip", "random")
 
     DIRECTIONS = (
         (1, 0),
@@ -74,6 +75,7 @@ class PlagueSimulationModel(Model):
 
         self.width = width
         self.height = height
+        self.seed = seed
         self.grid = MultiGrid(width, height, torus=False)
 
         # Walls and Doors live between cells, not inside the MultiGrid.
@@ -83,9 +85,11 @@ class PlagueSimulationModel(Model):
 
         self.house_damage = 0
         self.turn = 0
+        self.doctor_turns_started = 0
         self.running = True
         self.game_over = False
         self.game_won = False
+        self.end_reason = None
         self.phase = "doctor"
         self.doctor_turn_started = False
         self.events = []
@@ -97,6 +101,11 @@ class PlagueSimulationModel(Model):
         self.active_doctor_index = 0
 
         self.strategy = strategy
+        if strategy not in self.SUPPORTED_STRATEGIES:
+            raise ValueError(
+                f"Unsupported strategy: {strategy}. "
+                f"Choose one of: {', '.join(self.SUPPORTED_STRATEGIES)}."
+            )
         if num_agents < 1:
             raise ValueError("num_agents must be at least 1.")
         self.num_agents = num_agents
@@ -383,7 +392,83 @@ class PlagueSimulationModel(Model):
         """Check movement geometry without spending Action Points."""
         if doctor.pos is None:
             return False
-        return self.can_cross(doctor.pos, target)
+        if not self.can_cross(doctor.pos, target):
+            return False
+
+        # The reactive policies do not enter an active RatKing cell.  They
+        # must spend an action treating it first.
+        return not isinstance(self.get_infestation_at(target), RatKing)
+
+    def get_agent_by_id(self, unique_id):
+        """Return an active Mesa agent by its stable ID, if it still exists."""
+        for entity in self.agents:
+            if entity.unique_id == unique_id:
+                return entity
+        return None
+
+    def is_action_legal(self, doctor, action):
+        """Validate a known Doctor action without changing the game state."""
+        kind = action.get("kind")
+        target = action.get("target")
+
+        if doctor.pos is None or not self.is_inside_board(doctor.pos):
+            return False
+
+        if kind == "move":
+            return self.can_doctor_move(doctor, target)
+
+        if kind in ("open_door", "close_door", "damage_wall"):
+            if not self.are_neighbors(doctor.pos, target):
+                return False
+            boundary = self.get_boundary(doctor.pos, target)
+            if kind == "open_door":
+                return isinstance(boundary, Door) and not boundary.is_passable
+            if kind == "close_door":
+                return isinstance(boundary, Door) and boundary.is_open and not boundary.is_destroyed
+            return isinstance(boundary, Wall) and not boundary.is_destroyed
+
+        if kind in ("treat_rat_swarm", "treat_rat_king"):
+            infestation = self.get_agent_by_id(target)
+            expected_type = RatSwarm if kind == "treat_rat_swarm" else RatKing
+            if not isinstance(infestation, expected_type) or infestation.pos is None:
+                return False
+            if infestation.pos == doctor.pos:
+                return True
+            return (
+                self.are_neighbors(doctor.pos, infestation.pos)
+                and self.can_cross(doctor.pos, infestation.pos)
+            )
+
+        if kind == "pick_up_patient":
+            patient = self.get_agent_by_id(target)
+            return (
+                doctor.carried_patient is None
+                and isinstance(patient, Patient)
+                and patient.pos == doctor.pos
+            )
+
+        if kind == "drop_patient":
+            return doctor.carried_patient is not None
+
+        return False
+
+    def open_door(self, cell_a, cell_b):
+        """Open one Door after the Doctor has validated and paid for it."""
+        boundary = self.get_boundary(cell_a, cell_b)
+        if not isinstance(boundary, Door) or boundary.is_passable:
+            return False
+        boundary.open()
+        self.emit_event("door_opened", id=self.get_boundary_id(cell_a, cell_b))
+        return True
+
+    def close_door(self, cell_a, cell_b):
+        """Close one Door after the Doctor has validated and paid for it."""
+        boundary = self.get_boundary(cell_a, cell_b)
+        if not isinstance(boundary, Door) or not boundary.is_open or boundary.is_destroyed:
+            return False
+        boundary.close()
+        self.emit_event("door_closed", id=self.get_boundary_id(cell_a, cell_b))
+        return True
 
     def move_doctor(self, doctor, target):
         """Move a Doctor after agents.py has validated and paid the AP cost."""
@@ -399,6 +484,9 @@ class PlagueSimulationModel(Model):
             to_position=list(target),
             remaining_ap=doctor.action_points,
         )
+        poi = self.get_poi_at(target)
+        if poi is not None:
+            self.reveal_poi(poi)
         return True
 
     # ==========================================================
@@ -733,12 +821,26 @@ class PlagueSimulationModel(Model):
         return patient
 
     def remove_patient(self, patient):
+        for doctor in self.doctors:
+            if doctor.carried_patient is patient:
+                doctor.carried_patient = None
         if patient.pos is not None:
             self.grid.remove_agent(patient)
         patient.remove()
 
     def kill_patient(self, patient):
-        position = list(patient.pos) if patient.pos is not None else None
+        if self.get_agent_by_id(patient.unique_id) is not patient:
+            return False
+
+        carrier = next(
+            (doctor for doctor in self.doctors if doctor.carried_patient is patient),
+            None,
+        )
+        effective_position = patient.pos
+        if effective_position is None and carrier is not None:
+            effective_position = carrier.pos
+
+        position = list(effective_position) if effective_position is not None else None
         event_data = {"id": patient.unique_id}
         if position is not None:
             event_data["position"] = position
@@ -746,6 +848,7 @@ class PlagueSimulationModel(Model):
         self.remove_patient(patient)
         self.patients_killed += 1
         self.check_game_end()
+        return True
 
     def kill_hidden_patient(self, poi):
         if not poi.has_patient:
@@ -757,7 +860,18 @@ class PlagueSimulationModel(Model):
         return True
 
     def rescue_patient(self, patient):
-        position = list(patient.pos) if patient.pos is not None else None
+        if self.get_agent_by_id(patient.unique_id) is not patient:
+            return False
+
+        carrier = next(
+            (doctor for doctor in self.doctors if doctor.carried_patient is patient),
+            None,
+        )
+        effective_position = patient.pos
+        if effective_position is None and carrier is not None:
+            effective_position = carrier.pos
+
+        position = list(effective_position) if effective_position is not None else None
         event_data = {"id": patient.unique_id}
         if position is not None:
             event_data["position"] = position
@@ -765,9 +879,13 @@ class PlagueSimulationModel(Model):
         self.remove_patient(patient)
         self.patients_rescued += 1
         self.check_game_end()
+        return True
 
     def resolve_rat_king_cell(self, position):
         """Resolve Patients and POIs when a RatKing appears in a cell."""
+        for doctor in self.get_doctors_at(position):
+            self.knock_down_doctor(doctor)
+
         # More than one revealed Patient can share a MultiGrid cell.
         for patient in list(self.get_patients_at(position)):
             self.kill_patient(patient)
@@ -780,6 +898,29 @@ class PlagueSimulationModel(Model):
             self.kill_hidden_patient(poi)
         else:
             self.remove_poi(poi, emit_event=True)
+
+    def knock_down_doctor(self, doctor):
+        """Move a Doctor from a RatKing cell to the nearest exterior exit."""
+        if doctor.carried_patient is not None:
+            self.kill_patient(doctor.carried_patient)
+
+        exits = self.get_exit_positions()
+        destination = min(
+            exits,
+            key=lambda cell: (
+                (cell[0] - doctor.pos[0]) ** 2
+                + (cell[1] - doctor.pos[1]) ** 2,
+                exits.index(cell),
+            ),
+        )
+        previous = doctor.pos
+        self.grid.move_agent(doctor, destination)
+        self.emit_event(
+            "doctor_knocked_down",
+            id=doctor.unique_id,
+            from_position=list(previous),
+            to_position=list(destination),
+        )
 
     # ==========================================================
     # Environment phase and game state
@@ -803,26 +944,63 @@ class PlagueSimulationModel(Model):
 
         self.check_game_end()
 
-    def finish_game(self, won):
+    def finish_game(self, won, reason=None):
         if self.game_over:
             return
         self.game_over = True
         self.game_won = won
+        self.end_reason = reason or ("rescued_7" if won else "unknown")
         self.running = False
         self.phase = "finished"
         self.emit_event("game_won" if won else "game_lost")
 
     def check_game_end(self):
         if self.patients_killed >= self.MAX_PATIENTS_KILLED:
-            self.finish_game(False)
+            self.finish_game(False, "patients_killed_4")
             return
 
         if self.house_damage >= self.MAX_HOUSE_DAMAGE:
-            self.finish_game(False)
+            self.finish_game(False, "collapse")
             return
 
         if self.patients_rescued >= self.PATIENTS_TO_RESCUE:
-            self.finish_game(True)
+            self.finish_game(True, "rescued_7")
+
+    def get_statistics(self):
+        """Return a JSON-ready summary without exposing hidden POI contents."""
+        patients_on_board = sum(
+            isinstance(entity, Patient) and entity.pos is not None
+            for entity in self.agents
+        )
+        patients_carried = sum(
+            doctor.carried_patient is not None for doctor in self.doctors
+        )
+        patients_hidden = sum(
+            isinstance(entity, POI) and entity.has_patient
+            for entity in self.agents
+        )
+        patients_in_pool = sum(self.poi_pool)
+
+        return {
+            "strategy": self.strategy,
+            "seed": self.seed,
+            "num_agents": self.num_agents,
+            "result": (
+                "victory" if self.game_over and self.game_won
+                else "defeat" if self.game_over
+                else "running"
+            ),
+            "end_reason": self.end_reason,
+            "turns_completed": self.turn,
+            "doctor_turns_started": self.doctor_turns_started,
+            "patients_rescued": self.patients_rescued,
+            "patients_killed": self.patients_killed,
+            "house_damage": self.house_damage,
+            "patients_on_board": patients_on_board,
+            "patients_carried": patients_carried,
+            "patients_hidden": patients_hidden,
+            "patients_in_pool": patients_in_pool,
+        }
 
     def get_active_doctor(self):
         """Return the Doctor whose turn is currently active."""
@@ -852,6 +1030,7 @@ class PlagueSimulationModel(Model):
         if not self.doctor_turn_started:
             doctor.start_turn()
             self.doctor_turn_started = True
+            self.doctor_turns_started += 1
             self.emit_event(
                 "doctor_turn_started",
                 doctor_id=doctor.unique_id,
@@ -983,6 +1162,7 @@ class PlagueSimulationModel(Model):
             "width": self.width,
             "height": self.height,
             "turn": self.turn,
+            "strategy": self.strategy,
             "phase": self.phase,
             "active_doctor_id": (
                 active_doctor.unique_id if active_doctor is not None else -1

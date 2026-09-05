@@ -202,6 +202,27 @@ class TestPlagueSimulationModel(unittest.TestCase):
         self.assertTrue(self.model.game_won)
         self.assertFalse(self.model.running)
 
+    def test_statistics_preserve_patient_counts_when_house_collapses(self):
+        patient = self.model.create_patient((1, 1))
+        self.model.house_damage = 23
+
+        self.model.damage_boundary((2, 3), (3, 3))
+
+        statistics = self.model.get_statistics()
+        self.assertTrue(self.model.game_over)
+        self.assertEqual(statistics["end_reason"], "collapse")
+        self.assertEqual(statistics["patients_killed"], 0)
+        self.assertEqual(statistics["patients_on_board"], 1)
+        self.assertEqual(patient.pos, (1, 1))
+
+    def test_doctor_turns_started_counts_terminal_doctor_turn(self):
+        random_model = PlagueSimulationModel(strategy="random", seed=7)
+
+        random_model.step_doctor()
+
+        self.assertEqual(random_model.doctor_turns_started, 1)
+        self.assertEqual(random_model.get_statistics()["strategy"], "random")
+
 
 if __name__ == "__main__":
     unittest.main()

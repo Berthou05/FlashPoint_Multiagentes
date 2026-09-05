@@ -81,7 +81,11 @@ class Server(BaseHTTPRequestHandler):
             strategy = data.get("strategy", "skip")
             num_agents = data.get("num_agents", 1)
             seed = data.get("seed")
-            create_model(strategy, num_agents, seed)
+            try:
+                create_model(strategy, num_agents, seed)
+            except (TypeError, ValueError) as error:
+                self.send_error(400, str(error))
+                return
             self._send_game_response()
             return
 
@@ -90,20 +94,24 @@ class Server(BaseHTTPRequestHandler):
         try:
             if self.path == "/step_doctor":
                 events = current_model.step_doctor()
-                self._advance_state_version()
+                self._advance_state_version(bool(events))
                 self._send_game_response(events)
                 return
 
             if self.path == "/step_environment":
                 events = current_model.step_environment()
-                self._advance_state_version()
+                self._advance_state_version(bool(events))
                 self._send_game_response(events)
                 return
 
             if self.path in ("/step_complete_turn", "/step"):
-                starting_phase = current_model.phase
                 events = current_model.step_complete_turn()
-                self._advance_state_version(2 if starting_phase == "doctor" else 1)
+                phase_events = {
+                    event["type"]
+                    for event in events
+                    if event["type"] in ("doctor_turn_started", "environment_started")
+                }
+                self._advance_state_version(len(phase_events))
                 self._send_game_response(events)
                 return
         except (ValueError, RuntimeError) as error:
