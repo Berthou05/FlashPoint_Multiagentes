@@ -1,43 +1,47 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class SimulationRenderer : MonoBehaviour
 {
-    // Estos son los objetos que Unity va a crear en el tablero
+    // Prefabs que se van a mostrar en el tablero
     public GameObject doctor;
     public GameObject ratSwarm;
     public GameObject ratKing;
     public GameObject poi;
     public GameObject patient;
 
-    // Este script es el que convierte las coordenadas x,y de Mesa
-    // a una posición dentro de Unity
+    // Convierte las coordenadas de Mesa a Unity
     public BoardPositionConverter positionConverter;
 
-    // Aquí se toma la información que llegó de Python
+    // Conexión con Python
     public SimulationConnection connection;
 
-    // Esta función toma el estado actual y muestra todo en el tablero
+    // Aquí guardamos los objetos que ya existen en Unity.
+    // El número es el ID que manda Mesa.
+    private Dictionary<int, GameObject> doctors = new Dictionary<int, GameObject>();
+    private Dictionary<int, GameObject> ratSwarms = new Dictionary<int, GameObject>();
+    private Dictionary<int, GameObject> ratKings = new Dictionary<int, GameObject>();
+    private Dictionary<int, GameObject> pois = new Dictionary<int, GameObject>();
+    private Dictionary<int, GameObject> patients = new Dictionary<int, GameObject>();
+
+
+    // Actualiza Unity para que coincida con el estado de Mesa
     public void RenderState()
     {
-        // Se revisa que sí haya llegado una respuesta
         if (connection.currentResponse == null)
         {
             Debug.LogError("No hay respuesta de la simulación.");
             return;
         }
 
-        // También revisamos que la respuesta tenga un estado
         if (connection.currentResponse.state == null)
         {
             Debug.LogError("No hay estado para mostrar.");
             return;
         }
 
-        // Guardamos el estado en una variable más corta
-        // para no tener que escribir connection.currentResponse.state todo el tiempo
         SimulationState state = connection.currentResponse.state;
 
-        // Mostramos cada tipo de objeto que exista
         RenderDoctors(state.doctors);
         RenderRatSwarms(state.rat_swarms);
         RenderRatKings(state.rat_kings);
@@ -45,124 +49,310 @@ public class SimulationRenderer : MonoBehaviour
         RenderPatients(state.patients);
     }
 
-    void RenderDoctors(DoctorData[] doctors)
+
+    void RenderDoctors(DoctorData[] datos)
     {
-        // Si no llegaron doctores, simplemente no hacemos nada
-        if (doctors == null)
+        List<int> idsActuales = new List<int>();
+
+        if (datos != null)
         {
-            return;
+            for (int i = 0; i < datos.Length; i++)
+            {
+                int id = datos[i].id;
+                idsActuales.Add(id);
+
+                Vector3 posicion =
+                    positionConverter.ConvertToUnityPosition(
+                        datos[i].x,
+                        datos[i].y
+                    );
+
+                // Si todavía no existe, lo creamos
+                if (!doctors.ContainsKey(id))
+                {
+                    GameObject nuevoDoctor =
+                        Instantiate(
+                            doctor,
+                            posicion,
+                            Quaternion.identity
+                        );
+
+                    nuevoDoctor.name = "Doctor_" + id;
+
+                    doctors.Add(id, nuevoDoctor);
+                }
+                else
+                {
+                    // Si ya existe, solo actualizamos su posición
+                    doctors[id].transform.position = posicion;
+                }
+            }
         }
 
-        // Recorremos todos los doctores que mandó Python
-        for (int i = 0; i < doctors.Length; i++)
-        {
-            // Convertimos su x,y a una posición de Unity
-            Vector3 posicionUnity =
-                positionConverter.ConvertToUnityPosition(
-                    doctors[i].x,
-                    doctors[i].y
-                );
+        RemoveMissingDoctors(idsActuales);
+    }
 
-            // Creamos el doctor en esa posición
-            Instantiate(
-                doctor,
-                posicionUnity,
-                Quaternion.identity
-            );
+
+    void RenderRatSwarms(EntityData[] datos)
+    {
+        List<int> idsActuales = new List<int>();
+
+        if (datos != null)
+        {
+            for (int i = 0; i < datos.Length; i++)
+            {
+                int id = datos[i].id;
+                idsActuales.Add(id);
+
+                Vector3 posicion =
+                    positionConverter.ConvertToUnityPosition(
+                        datos[i].x,
+                        datos[i].y
+                    );
+
+                if (!ratSwarms.ContainsKey(id))
+                {
+                    GameObject nuevo =
+                        Instantiate(
+                            ratSwarm,
+                            posicion,
+                            Quaternion.identity
+                        );
+
+                    nuevo.name = "RatSwarm_" + id;
+
+                    ratSwarms.Add(id, nuevo);
+                }
+                else
+                {
+                    ratSwarms[id].transform.position = posicion;
+                }
+            }
+        }
+
+        RemoveMissingRatSwarms(idsActuales);
+    }
+
+
+    void RenderRatKings(EntityData[] datos)
+    {
+        List<int> idsActuales = new List<int>();
+
+        if (datos != null)
+        {
+            for (int i = 0; i < datos.Length; i++)
+            {
+                int id = datos[i].id;
+                idsActuales.Add(id);
+
+                Vector3 posicion =
+                    positionConverter.ConvertToUnityPosition(
+                        datos[i].x,
+                        datos[i].y
+                    );
+
+                if (!ratKings.ContainsKey(id))
+                {
+                    GameObject nuevo =
+                        Instantiate(
+                            ratKing,
+                            posicion,
+                            Quaternion.identity
+                        );
+
+                    nuevo.name = "RatKing_" + id;
+
+                    ratKings.Add(id, nuevo);
+                }
+                else
+                {
+                    ratKings[id].transform.position = posicion;
+                }
+            }
+        }
+
+        RemoveMissingRatKings(idsActuales);
+    }
+
+
+    void RenderPois(EntityData[] datos)
+    {
+        List<int> idsActuales = new List<int>();
+
+        if (datos != null)
+        {
+            for (int i = 0; i < datos.Length; i++)
+            {
+                int id = datos[i].id;
+                idsActuales.Add(id);
+
+                Vector3 posicion =
+                    positionConverter.ConvertToUnityPosition(
+                        datos[i].x,
+                        datos[i].y
+                    );
+
+                if (!pois.ContainsKey(id))
+                {
+                    GameObject nuevo =
+                        Instantiate(
+                            poi,
+                            posicion,
+                            Quaternion.identity
+                        );
+
+                    nuevo.name = "POI_" + id;
+
+                    pois.Add(id, nuevo);
+                }
+                else
+                {
+                    pois[id].transform.position = posicion;
+                }
+            }
+        }
+
+        RemoveMissingPois(idsActuales);
+    }
+
+
+    void RenderPatients(EntityData[] datos)
+    {
+        List<int> idsActuales = new List<int>();
+
+        if (datos != null)
+        {
+            for (int i = 0; i < datos.Length; i++)
+            {
+                int id = datos[i].id;
+                idsActuales.Add(id);
+
+                Vector3 posicion =
+                    positionConverter.ConvertToUnityPosition(
+                        datos[i].x,
+                        datos[i].y
+                    );
+
+                if (!patients.ContainsKey(id))
+                {
+                    GameObject nuevo =
+                        Instantiate(
+                            patient,
+                            posicion,
+                            Quaternion.identity
+                        );
+
+                    nuevo.name = "Patient_" + id;
+
+                    patients.Add(id, nuevo);
+                }
+                else
+                {
+                    patients[id].transform.position = posicion;
+                }
+            }
+        }
+
+        RemoveMissingPatients(idsActuales);
+    }
+
+
+    void RemoveMissingDoctors(List<int> idsActuales)
+    {
+        List<int> borrar = new List<int>();
+
+        foreach (int id in doctors.Keys)
+        {
+            if (!idsActuales.Contains(id))
+            {
+                borrar.Add(id);
+            }
+        }
+
+        for (int i = 0; i < borrar.Count; i++)
+        {
+            Destroy(doctors[borrar[i]]);
+            doctors.Remove(borrar[i]);
         }
     }
 
-    // Eso se repite para todos los objetos.
 
-    void RenderRatSwarms(EntityData[] rats)
+    void RemoveMissingRatSwarms(List<int> idsActuales)
     {
-        if (rats == null)
+        List<int> borrar = new List<int>();
+
+        foreach (int id in ratSwarms.Keys)
         {
-            return;
+            if (!idsActuales.Contains(id))
+            {
+                borrar.Add(id);
+            }
         }
 
-        for (int i = 0; i < rats.Length; i++)
+        for (int i = 0; i < borrar.Count; i++)
         {
-            Vector3 posicionUnity =
-                positionConverter.ConvertToUnityPosition(
-                    rats[i].x,
-                    rats[i].y
-                );
-
-            Instantiate(
-                ratSwarm,
-                posicionUnity,
-                Quaternion.identity
-            );
+            Destroy(ratSwarms[borrar[i]]);
+            ratSwarms.Remove(borrar[i]);
         }
     }
 
-    void RenderRatKings(EntityData[] kings)
+
+    void RemoveMissingRatKings(List<int> idsActuales)
     {
-        if (kings == null)
+        List<int> borrar = new List<int>();
+
+        foreach (int id in ratKings.Keys)
         {
-            return;
+            if (!idsActuales.Contains(id))
+            {
+                borrar.Add(id);
+            }
         }
 
-        for (int i = 0; i < kings.Length; i++)
+        for (int i = 0; i < borrar.Count; i++)
         {
-            Vector3 posicionUnity =
-                positionConverter.ConvertToUnityPosition(
-                    kings[i].x,
-                    kings[i].y
-                );
-
-            Instantiate(
-                ratKing,
-                posicionUnity,
-                Quaternion.identity
-            );
+            Destroy(ratKings[borrar[i]]);
+            ratKings.Remove(borrar[i]);
         }
     }
 
-    void RenderPois(EntityData[] pois)
+
+    void RemoveMissingPois(List<int> idsActuales)
     {
-        if (pois == null)
+        List<int> borrar = new List<int>();
+
+        foreach (int id in pois.Keys)
         {
-            return;
+            if (!idsActuales.Contains(id))
+            {
+                borrar.Add(id);
+            }
         }
 
-        for (int i = 0; i < pois.Length; i++)
+        for (int i = 0; i < borrar.Count; i++)
         {
-            Vector3 posicionUnity =
-                positionConverter.ConvertToUnityPosition(
-                    pois[i].x,
-                    pois[i].y
-                );
-
-            Instantiate(
-                poi,
-                posicionUnity,
-                Quaternion.identity
-            );
+            Destroy(pois[borrar[i]]);
+            pois.Remove(borrar[i]);
         }
     }
 
-    void RenderPatients(EntityData[] patients)
+
+    void RemoveMissingPatients(List<int> idsActuales)
     {
-        if (patients == null)
+        List<int> borrar = new List<int>();
+
+        foreach (int id in patients.Keys)
         {
-            return;
+            if (!idsActuales.Contains(id))
+            {
+                borrar.Add(id);
+            }
         }
 
-        for (int i = 0; i < patients.Length; i++)
+        for (int i = 0; i < borrar.Count; i++)
         {
-            Vector3 posicionUnity =
-                positionConverter.ConvertToUnityPosition(
-                    patients[i].x,
-                    patients[i].y
-                );
-
-            Instantiate(
-                patient,
-                posicionUnity,
-                Quaternion.identity
-            );
+            Destroy(patients[borrar[i]]);
+            patients.Remove(borrar[i]);
         }
     }
 }
