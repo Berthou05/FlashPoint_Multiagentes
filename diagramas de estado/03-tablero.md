@@ -1,11 +1,11 @@
 # Estado del tablero
 
-El tablero es una cuadrícula Mesa de 8 por 10. Las entidades se colocan en celdas; muros y puertas se almacenan entre celdas en `boundaries`.
+El tablero es una cuadrícula Mesa de 10 por 8. Las entidades se colocan en celdas; muros y puertas se almacenan entre celdas en `boundaries`.
 
 ```mermaid
 stateDiagram-v2
     [*] --> TableroCreado
-    TableroCreado --> CeldasActivas: MultiGrid 8 x 10
+    TableroCreado --> CeldasActivas: MultiGrid 10 x 8
     CeldasActivas --> ConPOI: colocar POI
     CeldasActivas --> ConPaciente: revelar POI con paciente
     CeldasActivas --> ConInfestacion: crear RatSwarm o RatKing

@@ -10,8 +10,8 @@ from .entities import Door, POI, Patient, RatKing, RatSwarm, Wall
 class PlagueSimulationModel(Model):
     """Store the board, entities, and global game rules."""
 
-    BOARD_WIDTH = 8
-    BOARD_HEIGHT = 10
+    BOARD_WIDTH = 10
+    BOARD_HEIGHT = 8
 
     MAX_HOUSE_DAMAGE = 24
     PATIENTS_TO_RESCUE = 7
@@ -30,34 +30,34 @@ class PlagueSimulationModel(Model):
 
     # Fixed Family-mode starting positions for this board.
     INITIAL_RAT_KING_POSITIONS = (
-        (4, 2), (5, 2), (4, 3), (5, 3), (3, 4),
-        (4, 4), (4, 5), (1, 6), (2, 6), (2, 7),
+        (2, 3), (2, 2), (3, 3), (3, 2), (4, 4),
+        (4, 3), (5, 3), (6, 6), (6, 5), (7, 5),
     )
 
     INITIAL_POI_POSITIONS = (
-        (2, 1),
-        (2, 8),
-        (5, 4),
+        (1, 5),
+        (8, 5),
+        (4, 2),
     )
 
     EXTERIOR_DOORS = (
-        ((4, 0), (4, 1)),
         ((0, 3), (1, 3)),
-        ((3, 8), (3, 9)),
-        ((6, 6), (7, 6)),
+        ((3, 6), (3, 7)),
+        ((8, 4), (9, 4)),
+        ((6, 0), (6, 1)),
     )
 
-    EXTERIOR_ENTRANCES = ((4, 0), (0, 3), (3, 9), (7, 6))
+    EXTERIOR_ENTRANCES = ((0, 3), (3, 7), (9, 4), (6, 0))
 
     INTERIOR_DOORS = (
-        ((1, 5), (1, 6)),
-        ((1, 7), (1, 8)),
-        ((2, 4), (3, 4)),
-        ((3, 6), (3, 7)),
-        ((4, 8), (5, 8)),
-        ((5, 5), (5, 6)),
-        ((6, 3), (6, 4)),
-        ((4, 2), (4, 3)),
+        ((5, 6), (6, 6)),
+        ((7, 6), (8, 6)),
+        ((4, 4), (4, 5)),
+        ((6, 4), (7, 4)),
+        ((8, 2), (8, 3)),
+        ((5, 2), (6, 2)),
+        ((3, 1), (4, 1)),
+        ((2, 3), (3, 3)),
     )
 
     def __init__(
@@ -194,31 +194,31 @@ class PlagueSimulationModel(Model):
     def _setup_house(self):
         """Crea los muros del tablero fijo y después sustituye puertas."""
         # Perímetro de la casa.
-        for x in range(1, 7):
+        for x in range(1, 9):
             self.add_wall((x, 0), (x, 1))
-            self.add_wall((x, 8), (x, 9))
+            self.add_wall((x, 6), (x, 7))
 
-        for y in range(1, 9):
+        for y in range(1, 7):
             self.add_wall((0, y), (1, y))
-            self.add_wall((6, y), (7, y))
+            self.add_wall((8, y), (9, y))
 
         # Muros que dividen habitaciones.
         wall_segments = (
-            ((2, 1), (3, 1)), ((2, 2), (3, 2)),
-            ((2, 3), (3, 3)), ((2, 4), (3, 4)),
-            ((2, 5), (3, 5)), ((2, 6), (3, 6)),
-            ((2, 7), (3, 7)), ((2, 8), (3, 8)),
-
-            ((4, 3), (5, 3)), ((4, 4), (5, 4)),
-            ((4, 5), (5, 5)), ((4, 6), (5, 6)),
-            ((4, 7), (5, 7)), ((4, 8), (5, 8)),
+            ((1, 4), (1, 5)), ((2, 4), (2, 5)),
+            ((3, 4), (3, 5)), ((4, 4), (4, 5)),
+            ((5, 4), (5, 5)), ((6, 4), (6, 5)),
+            ((7, 4), (7, 5)), ((8, 4), (8, 5)),
 
             ((3, 2), (3, 3)), ((4, 2), (4, 3)),
-            ((5, 3), (5, 4)), ((6, 3), (6, 4)),
-            ((1, 5), (1, 6)), ((2, 5), (2, 6)),
-            ((5, 5), (5, 6)), ((6, 5), (6, 6)),
-            ((1, 7), (1, 8)), ((2, 7), (2, 8)),
-            ((3, 6), (3, 7)), ((4, 6), (4, 7)),
+            ((5, 2), (5, 3)), ((6, 2), (6, 3)),
+            ((7, 2), (7, 3)), ((8, 2), (8, 3)),
+
+            ((2, 4), (3, 4)), ((2, 3), (3, 3)),
+            ((3, 2), (4, 2)), ((3, 1), (4, 1)),
+            ((5, 6), (6, 6)), ((5, 5), (6, 5)),
+            ((5, 2), (6, 2)), ((5, 1), (6, 1)),
+            ((7, 6), (8, 6)), ((7, 5), (8, 5)),
+            ((6, 4), (7, 4)), ((6, 3), (7, 3)),
         )
 
         for cell_a, cell_b in wall_segments:
@@ -242,7 +242,7 @@ class PlagueSimulationModel(Model):
     def is_interior_position(self, position):
         """Return True only for cells inside the house."""
         x, y = position
-        return 1 <= x <= 6 and 1 <= y <= 8
+        return 1 <= x <= 8 and 1 <= y <= 6
 
     def is_exterior_position(self, position):
         """Return True for valid board cells outside the house."""
@@ -264,10 +264,10 @@ class PlagueSimulationModel(Model):
         return next((entity for entity in self.grid.get_cell_list_contents([position]) if isinstance(entity, entity_type)), None)
 
     def random_interior_position(self):
-        """Equivalent to rolling the 6 by 8 coordinates of the board."""
+        """Equivalent to rolling the 8 by 6 coordinates of the board."""
         return (
-            self.random.randrange(1, 7),
             self.random.randrange(1, 9),
+            self.random.randrange(1, 7),
         )
 
     # ==========================================================

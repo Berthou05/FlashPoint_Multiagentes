@@ -16,42 +16,42 @@ class TestPlagueDoctorActions(unittest.TestCase):
         return self.doctor.execute_action((kind, target))
 
     def test_open_door_then_move_pays_each_action_once(self):
-        self.model.grid.move_agent(self.doctor, (2, 4))
+        self.model.grid.move_agent(self.doctor, (4, 5))
         infestation = next(
             entity
-            for entity in self.model.grid.get_cell_list_contents([(3, 4)])
+            for entity in self.model.grid.get_cell_list_contents([(4, 4)])
             if isinstance(entity, RatKing)
         )
         self.model.remove_infestation(infestation)
         self.doctor.start_turn()
 
-        self.assertFalse(self.action("move", (3, 4)))
+        self.assertFalse(self.action("move", (4, 4)))
         self.assertEqual(self.doctor.action_points, 4)
-        self.assertTrue(self.action("open_door", (3, 4)))
-        self.assertTrue(self.action("move", (3, 4)))
+        self.assertTrue(self.action("open_door", (4, 4)))
+        self.assertTrue(self.action("move", (4, 4)))
         self.assertEqual(self.doctor.action_points, 2)
 
     def test_damage_wall_requires_two_paid_actions_before_crossing(self):
-        self.model.grid.move_agent(self.doctor, (2, 3))
+        self.model.grid.move_agent(self.doctor, (3, 5))
         self.doctor.start_turn()
         self.doctor.action_points = 6
 
-        self.assertFalse(self.action("move", (3, 3)))
-        self.assertTrue(self.action("damage_wall", (3, 3)))
-        self.assertFalse(self.action("move", (3, 3)))
-        self.assertTrue(self.action("damage_wall", (3, 3)))
-        self.assertTrue(self.action("move", (3, 3)))
+        self.assertFalse(self.action("move", (3, 4)))
+        self.assertTrue(self.action("damage_wall", (3, 4)))
+        self.assertFalse(self.action("move", (3, 4)))
+        self.assertTrue(self.action("damage_wall", (3, 4)))
+        self.assertTrue(self.action("move", (3, 4)))
         self.assertEqual(self.doctor.action_points, 1)
 
     def test_treats_a_neighboring_swarm_but_not_through_a_closed_door(self):
-        self.model.grid.move_agent(self.doctor, (2, 4))
+        self.model.grid.move_agent(self.doctor, (4, 5))
         infestation = next(
             entity
-            for entity in self.model.grid.get_cell_list_contents([(3, 4)])
+            for entity in self.model.grid.get_cell_list_contents([(4, 4)])
             if isinstance(entity, RatKing)
         )
         self.model.remove_infestation(infestation)
-        swarm = self.model.create_rat_swarm((3, 4))
+        swarm = self.model.create_rat_swarm((4, 4))
         self.doctor.start_turn()
 
         self.assertNotIn(
@@ -59,11 +59,11 @@ class TestPlagueDoctorActions(unittest.TestCase):
             self.doctor.get_available_actions(),
         )
         self.assertEqual(self.doctor.action_points, 4)
-        self.assertTrue(self.action("open_door", (3, 4)))
+        self.assertTrue(self.action("open_door", (4, 4)))
         self.assertTrue(self.action("treat_rat_swarm", swarm))
         self.assertFalse(any(
             isinstance(entity, (RatSwarm, RatKing))
-            for entity in self.model.grid.get_cell_list_contents([(3, 4)])
+            for entity in self.model.grid.get_cell_list_contents([(4, 4)])
         ))
         self.assertEqual(self.doctor.action_points, 2)
 
@@ -85,8 +85,8 @@ class TestPlagueDoctorActions(unittest.TestCase):
         self.assertEqual(self.doctor.action_points, 2)
 
     def test_dropping_a_patient_outside_rescues_it(self):
-        self.model.grid.move_agent(self.doctor, (4, 0))
-        patient = self.model.create_patient((4, 0))
+        self.model.grid.move_agent(self.doctor, (0, 3))
+        patient = self.model.create_patient((0, 3))
         self.doctor.start_turn()
 
         self.assertTrue(self.action("pick_up_patient", patient))
@@ -112,12 +112,12 @@ class TestPlagueDoctorActions(unittest.TestCase):
     def test_random_step_executes_one_action_from_the_available_list(self):
         self.doctor.strategy = "random"
         self.doctor.start_turn()
-        action = ("move", (4, 1))
+        action = ("move", (1, 3))
 
         with patch.object(self.doctor, "get_available_actions", return_value=[action]):
             self.assertTrue(self.doctor.step())
 
-        self.assertEqual(self.doctor.pos, (4, 1))
+        self.assertEqual(self.doctor.pos, (1, 3))
         self.assertEqual(self.doctor.action_points, 3)
         self.assertFalse(self.doctor.turn_completed)
 
@@ -136,8 +136,8 @@ class TestPlagueDoctorActions(unittest.TestCase):
         self.assertEqual(self.doctor.action_points, 8)
 
     def test_free_pickup_and_rescue_work_when_no_action_points_remain(self):
-        self.model.grid.move_agent(self.doctor, (4, 0))
-        patient = self.model.create_patient((4, 0))
+        self.model.grid.move_agent(self.doctor, (0, 3))
+        patient = self.model.create_patient((0, 3))
         self.doctor.action_points = 0
 
         self.assertTrue(self.action("pick_up_patient", patient))
@@ -176,11 +176,11 @@ class TestPlagueDoctorActions(unittest.TestCase):
         self.assertNotIn(("move", (0, 1)), actions)
 
     def test_execute_action_changes_door_and_pays_once(self):
-        self.model.grid.move_agent(self.doctor, (2, 4))
+        self.model.grid.move_agent(self.doctor, (4, 5))
         self.doctor.start_turn()
-        door = self.model.get_boundary((2, 4), (3, 4))
+        door = self.model.get_boundary((4, 5), (4, 4))
 
-        self.assertTrue(self.action("open_door", (3, 4)))
+        self.assertTrue(self.action("open_door", (4, 4)))
 
         self.assertTrue(door.is_open)
         self.assertEqual(self.doctor.action_points, 3)

@@ -9,21 +9,110 @@ class TestPlagueSimulationModel(unittest.TestCase):
     def setUp(self):
         self.model = PlagueSimulationModel(seed=7)
 
+    def test_fixed_board_matches_reference_coordinates(self):
+        expected_doors = {
+            ((0, 3), (1, 3)),
+            ((2, 3), (3, 3)),
+            ((3, 1), (4, 1)),
+            ((3, 6), (3, 7)),
+            ((4, 4), (4, 5)),
+            ((5, 2), (6, 2)),
+            ((5, 6), (6, 6)),
+            ((6, 0), (6, 1)),
+            ((6, 4), (7, 4)),
+            ((7, 6), (8, 6)),
+            ((8, 2), (8, 3)),
+            ((8, 4), (9, 4)),
+        }
+        expected_walls = {
+            ((0, 1), (1, 1)),
+            ((0, 2), (1, 2)),
+            ((0, 4), (1, 4)),
+            ((0, 5), (1, 5)),
+            ((0, 6), (1, 6)),
+            ((1, 0), (1, 1)),
+            ((1, 4), (1, 5)),
+            ((1, 6), (1, 7)),
+            ((2, 0), (2, 1)),
+            ((2, 4), (2, 5)),
+            ((2, 4), (3, 4)),
+            ((2, 6), (2, 7)),
+            ((3, 0), (3, 1)),
+            ((3, 2), (3, 3)),
+            ((3, 2), (4, 2)),
+            ((3, 4), (3, 5)),
+            ((4, 0), (4, 1)),
+            ((4, 2), (4, 3)),
+            ((4, 6), (4, 7)),
+            ((5, 0), (5, 1)),
+            ((5, 1), (6, 1)),
+            ((5, 2), (5, 3)),
+            ((5, 4), (5, 5)),
+            ((5, 5), (6, 5)),
+            ((5, 6), (5, 7)),
+            ((6, 2), (6, 3)),
+            ((6, 3), (7, 3)),
+            ((6, 4), (6, 5)),
+            ((6, 6), (6, 7)),
+            ((7, 0), (7, 1)),
+            ((7, 2), (7, 3)),
+            ((7, 4), (7, 5)),
+            ((7, 5), (8, 5)),
+            ((7, 6), (7, 7)),
+            ((8, 0), (8, 1)),
+            ((8, 1), (9, 1)),
+            ((8, 2), (9, 2)),
+            ((8, 3), (9, 3)),
+            ((8, 4), (8, 5)),
+            ((8, 5), (9, 5)),
+            ((8, 6), (8, 7)),
+            ((8, 6), (9, 6)),
+        }
+        actual_doors = {
+            cells
+            for cells, boundary in self.model.boundaries.items()
+            if isinstance(boundary, Door)
+        }
+        actual_walls = {
+            cells
+            for cells, boundary in self.model.boundaries.items()
+            if isinstance(boundary, Wall)
+        }
+        actual_rat_kings = {
+            entity.pos
+            for entity in self.model.agents
+            if isinstance(entity, RatKing)
+        }
+        actual_pois = {
+            entity.pos
+            for entity in self.model.agents
+            if isinstance(entity, POI)
+        }
+
+        self.assertEqual((self.model.width, self.model.height), (10, 8))
+        self.assertEqual(actual_doors, expected_doors)
+        self.assertEqual(actual_walls, expected_walls)
+        self.assertEqual(actual_rat_kings, {
+            (2, 2), (2, 3), (3, 2), (3, 3), (4, 3),
+            (4, 4), (5, 3), (6, 5), (6, 6), (7, 5),
+        })
+        self.assertEqual(actual_pois, {(1, 5), (4, 2), (8, 5)})
+
     def test_house_keeps_doors_and_destroyed_walls_as_boundaries(self):
-        wall = self.model.get_boundary((2, 3), (3, 3))
-        door = self.model.get_boundary((2, 4), (3, 4))
+        wall = self.model.get_boundary((3, 4), (3, 5))
+        door = self.model.get_boundary((4, 4), (4, 5))
 
         self.assertIsInstance(wall, Wall)
         self.assertIsInstance(door, Door)
-        self.assertFalse(self.model.can_cross((2, 3), (3, 3)))
-        self.assertEqual(self.model.damage_boundary((2, 3), (3, 3)), 1)
-        self.assertEqual(self.model.damage_boundary((2, 3), (3, 3)), 1)
-        self.assertIs(self.model.get_boundary((2, 3), (3, 3)), wall)
-        self.assertTrue(self.model.can_cross((2, 3), (3, 3)))
+        self.assertFalse(self.model.can_cross((3, 4), (3, 5)))
+        self.assertEqual(self.model.damage_boundary((3, 4), (3, 5)), 1)
+        self.assertEqual(self.model.damage_boundary((3, 4), (3, 5)), 1)
+        self.assertIs(self.model.get_boundary((3, 4), (3, 5)), wall)
+        self.assertTrue(self.model.can_cross((3, 4), (3, 5)))
         self.assertEqual(self.model.house_damage, 2)
 
     def test_model_starts_one_skip_doctor_at_an_exterior_door(self):
-        expected_positions = [(4, 0)]
+        expected_positions = [(0, 3)]
 
         self.assertEqual(len(self.model.doctors), 1)
         self.assertEqual(
@@ -156,7 +245,7 @@ class TestPlagueSimulationModel(unittest.TestCase):
         })
 
     def test_infestation_progresses_from_swarm_to_king_to_outbreak(self):
-        position = (2, 2)
+        position = (1, 1)
 
         self.model.add_infestation(position)
         self.assertTrue(any(
@@ -226,7 +315,7 @@ class TestPlagueSimulationModel(unittest.TestCase):
         patient = self.model.create_patient((1, 1))
         self.model.house_damage = 23
 
-        self.model.damage_boundary((2, 3), (3, 3))
+        self.model.damage_boundary((3, 4), (3, 5))
 
         statistics = self.model.get_statistics()
         self.assertTrue(self.model.game_over)

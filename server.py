@@ -16,7 +16,6 @@ def create_model(strategy="skip", num_agents=1, seed=None):
     model = PlagueSimulationModel(strategy=strategy, num_agents=num_agents, seed=seed)
     state_version = 0
 
-
 def get_model():
     global model
     if model is None:
