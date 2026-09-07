@@ -1,3 +1,5 @@
+import heapq
+
 import mesa
 
 from .entities import Door, POI, Patient, RatKing, RatSwarm, Wall
@@ -6,7 +8,13 @@ from .entities import Door, POI, Patient, RatKing, RatSwarm, Wall
 class PlagueDoctorAgent(mesa.Agent):
     """Doctor that decides and executes actions on the shared board."""
 
+    # ==========================================================
+    # GENERAL LOGIC
+    # ==========================================================
+
     MAX_ACTION_POINTS = 8
+    WALL_BREAK_PENALTY = 4
+    TARGET_CLAIM_PENALTY = 5
 
     ACTION_COSTS = {
         "move": 1,
@@ -14,6 +22,7 @@ class PlagueDoctorAgent(mesa.Agent):
         "close_door": 1,
         "damage_wall": 2,
         "treat_rat_swarm": 1,
+        "reduce_rat_king": 1,
         "treat_rat_king": 2,
         "pick_up_patient": 0,
         "drop_patient": 0,
@@ -26,6 +35,8 @@ class PlagueDoctorAgent(mesa.Agent):
         self.action_points = 0
         self.carried_patient = None
         self.turn_completed = False
+        self.current_task = None
+        self.recalculate_task = True
 
     def spend_ap(self, cost):
         if self.action_points < cost:
@@ -34,7 +45,7 @@ class PlagueDoctorAgent(mesa.Agent):
         return True
 
     def get_transition_cost(self, current, target):
-        """AP cost for pathfinding across one neighboring edge."""
+        """Real AP cost of a normal move from the Doctor's current state."""
         if not self.model.are_neighbors(current, target):
             return float("inf")
 
@@ -45,13 +56,12 @@ class PlagueDoctorAgent(mesa.Agent):
 
         if boundary is None or boundary.is_passable:
             return move_cost
-        if isinstance(boundary, Door):
-            return self.ACTION_COSTS["open_door"] + move_cost
         return float("inf")
 
     def start_turn(self):
         self.action_points = min(self.action_points + 4, self.MAX_ACTION_POINTS)
         self.turn_completed = False
+        self.recalculate_task = True
 
     def end_turn(self):
         self.turn_completed = True
@@ -102,11 +112,8 @@ class PlagueDoctorAgent(mesa.Agent):
     def execute_action(self, action):
         """Execute one legal action returned by a strategy."""
         kind, target = action
-        can_drop_carried_patient = (
-            kind == "drop_patient"
-            and target is None
-            and self.carried_patient is not None
-        )
+        can_drop_carried_patient = kind == "drop_patient" and target is None and self.carried_patient is not None
+
         if action not in self.get_available_actions() and not can_drop_carried_patient:
             return False
 
@@ -145,6 +152,11 @@ class PlagueDoctorAgent(mesa.Agent):
             self.model.damage_boundary(self.pos, target)
             return True
 
+        if kind == "reduce_rat_king":
+            self.spend_ap(self.ACTION_COSTS[kind])
+            self.model.demote_rat_king(target)
+            return True
+
         if kind in ("treat_rat_swarm", "treat_rat_king"):
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.remove_infestation(target)
@@ -170,19 +182,397 @@ class PlagueDoctorAgent(mesa.Agent):
 
         return False
 
+    # ==========================================================
+    # RANDOM STRATEGY
+    # ==========================================================
+
+    def step_random(self):
+        actions = self.get_available_actions()
+
+        if not actions:
+            self.end_turn()
+            return False
+
+        if not self.execute_action(self.model.random.choice(actions)):
+            raise RuntimeError("A selected legal Doctor action could not execute.")
+
+        return True
+
+    # ==========================================================
+    # INTELLIGENT STRATEGY
+    # ==========================================================
+
+    def get_tasks(self):
+        """Return every currently relevant objective visible to the Doctor."""
+        if self.carried_patient is not None:
+            return [{"kind": "rescue_carried", "target": self.carried_patient}]
+
+        tasks = []
+
+        for entity in self.model.agents:
+            if entity.pos is None:
+                continue
+
+            if isinstance(entity, Patient):
+                tasks.append({"kind": "rescue", "target": entity})
+            elif isinstance(entity, POI):
+                tasks.append({"kind": "investigate", "target": entity})
+            elif isinstance(entity, RatKing):
+                tasks.append({"kind": "treat_rat_king", "target": entity})
+            elif isinstance(entity, RatSwarm):
+                tasks.append({"kind": "treat_rat_swarm", "target": entity})
+
+        return tasks
+
+    def get_path_transition(self, current, target, carrying=False):
+        """Return Dijkstra cost and actions needed to cross one neighboring edge."""
+        if not self.model.are_neighbors(current, target):
+            return None
+
+        actions = []
+        ap_cost = 0
+        penalty = 0
+        move_cost = self.ACTION_COSTS["move_carrying_patient" if carrying else "move"]
+        boundary = self.model.get_boundary(current, target)
+
+        if isinstance(boundary, Door) and not boundary.is_passable:
+            actions.append(("open_door", target))
+            ap_cost += self.ACTION_COSTS["open_door"]
+
+        elif isinstance(boundary, Wall) and not boundary.is_destroyed:
+            hits = boundary.MAX_DAMAGE - boundary.damage
+            actions.extend([("damage_wall", target)] * hits)
+            ap_cost += hits * self.ACTION_COSTS["damage_wall"]
+            penalty += self.WALL_BREAK_PENALTY
+
+        infestation = self.model.get_entity(target, RatKing)
+        if infestation is not None:
+            actions.append(("reduce_rat_king", infestation))
+            ap_cost += self.ACTION_COSTS["reduce_rat_king"]
+
+        actions.append(("move", target))
+        ap_cost += move_cost
+
+        return {
+            "score": ap_cost + penalty,
+            "ap": ap_cost,
+            "penalty": penalty,
+            "actions": actions,
+        }
+
+    def dijkstra(self, start, carrying=False):
+        """Calculate the cheapest weighted route from start to every board cell."""
+        scores = {start: 0}
+        ap_costs = {start: 0}
+        penalties = {start: 0}
+        previous = {}
+        previous_actions = {}
+        queue = [(0, start)]
+
+        while queue:
+            current_score, current = heapq.heappop(queue)
+
+            if current_score != scores[current]:
+                continue
+
+            for neighbor in self.model.get_neighbors(current):
+                transition = self.get_path_transition(current, neighbor, carrying)
+                if transition is None:
+                    continue
+
+                new_score = current_score + transition["score"]
+
+                if neighbor not in scores or new_score < scores[neighbor]:
+                    scores[neighbor] = new_score
+                    ap_costs[neighbor] = ap_costs[current] + transition["ap"]
+                    penalties[neighbor] = penalties[current] + transition["penalty"]
+                    previous[neighbor] = current
+                    previous_actions[neighbor] = transition["actions"]
+                    heapq.heappush(queue, (new_score, neighbor))
+
+        return {
+            "start": start,
+            "scores": scores,
+            "ap_costs": ap_costs,
+            "penalties": penalties,
+            "previous": previous,
+            "previous_actions": previous_actions,
+        }
+
+    def reconstruct_plan(self, search, target):
+        """Recover the executable action sequence for one Dijkstra destination."""
+        if target not in search["scores"]:
+            return None
+
+        segments = []
+        current = target
+
+        while current != search["start"]:
+            segments.append(search["previous_actions"][current])
+            current = search["previous"][current]
+
+        plan = []
+        for segment in reversed(segments):
+            plan.extend(segment)
+
+        return plan
+
+    def get_treatment_transition(self, position, infestation):
+        """Return actions and cost needed to treat an infestation from one position."""
+        if position != infestation.pos and not self.model.are_neighbors(position, infestation.pos):
+            return None
+
+        actions = []
+        ap_cost = 0
+        penalty = 0
+
+        if position != infestation.pos:
+            boundary = self.model.get_boundary(position, infestation.pos)
+
+            if isinstance(boundary, Door) and not boundary.is_passable:
+                actions.append(("open_door", infestation.pos))
+                ap_cost += self.ACTION_COSTS["open_door"]
+
+            elif isinstance(boundary, Wall) and not boundary.is_destroyed:
+                hits = boundary.MAX_DAMAGE - boundary.damage
+                actions.extend([("damage_wall", infestation.pos)] * hits)
+                ap_cost += hits * self.ACTION_COSTS["damage_wall"]
+                penalty += self.WALL_BREAK_PENALTY
+
+        kind = "treat_rat_swarm" if isinstance(infestation, RatSwarm) else "treat_rat_king"
+        actions.append((kind, infestation))
+        ap_cost += self.ACTION_COSTS[kind]
+
+        return {
+            "score": ap_cost + penalty,
+            "ap": ap_cost,
+            "penalty": penalty,
+            "actions": actions,
+        }
+
+    def get_claim_penalty(self, task):
+        """Penalize targets already selected by other intelligent Doctors."""
+        claimed_by_others = 0
+
+        for doctor in self.model.doctors:
+            if doctor is self or doctor.current_task is None:
+                continue
+
+            if not doctor.task_is_valid(doctor.current_task):
+                continue
+
+            if doctor.current_task["target"] is task["target"]:
+                claimed_by_others += 1
+
+        return claimed_by_others * self.TARGET_CLAIM_PENALTY
+
+    def evaluate_task(self, task, normal_search=None):
+        """Add Dijkstra cost, utility and an executable first-phase plan to a task."""
+        kind = task["kind"]
+        target = task["target"]
+
+        if kind == "rescue_carried":
+            search = self.dijkstra(self.pos, carrying=True)
+
+            if self.model.is_exterior_position(self.pos):
+                best_exit = self.pos
+            else:
+                reachable_exits = [position for position in self.model.EXTERIOR_ENTRANCES if position in search["scores"]]
+                if not reachable_exits:
+                    return None
+                best_exit = min(reachable_exits, key=lambda position: search["scores"][position])
+
+            plan = self.reconstruct_plan(search, best_exit) or []
+            plan.append(("drop_patient", None))
+
+            search_cost = search["scores"][best_exit]
+            ap_cost = search["ap_costs"][best_exit]
+            penalty = search["penalties"][best_exit]
+
+        elif kind == "rescue":
+            if target.pos is None:
+                return None
+
+            search = normal_search or self.dijkstra(self.pos)
+            if target.pos not in search["scores"]:
+                return None
+
+            to_patient_plan = self.reconstruct_plan(search, target.pos)
+            carrying_search = self.dijkstra(target.pos, carrying=True)
+            reachable_exits = [position for position in self.model.EXTERIOR_ENTRANCES if position in carrying_search["scores"]]
+
+            if not reachable_exits:
+                return None
+
+            best_exit = min(reachable_exits, key=lambda position: carrying_search["scores"][position])
+
+            search_cost = search["scores"][target.pos] + carrying_search["scores"][best_exit]
+            ap_cost = search["ap_costs"][target.pos] + carrying_search["ap_costs"][best_exit]
+            penalty = search["penalties"][target.pos] + carrying_search["penalties"][best_exit]
+
+            # Execute only the route to the Patient now. Once picked up,
+            # the next intelligent step recalculates the carrying route.
+            plan = to_patient_plan + [("pick_up_patient", target)]
+
+        elif kind == "investigate":
+            if target.pos is None:
+                return None
+
+            search = normal_search or self.dijkstra(self.pos)
+            if target.pos not in search["scores"]:
+                return None
+
+            search_cost = search["scores"][target.pos]
+            ap_cost = search["ap_costs"][target.pos]
+            penalty = search["penalties"][target.pos]
+            plan = self.reconstruct_plan(search, target.pos)
+
+            if not plan:
+                return None
+
+        elif kind in ("treat_rat_swarm", "treat_rat_king"):
+            if target.pos is None:
+                return None
+
+            search = normal_search or self.dijkstra(self.pos)
+            candidates = [self.pos] if self.pos == target.pos else []
+            candidates += self.model.get_neighbors(target.pos)
+
+            best = None
+
+            for position in candidates:
+                if position not in search["scores"]:
+                    continue
+
+                treatment = self.get_treatment_transition(position, target)
+                if treatment is None:
+                    continue
+
+                total_score = search["scores"][position] + treatment["score"]
+
+                if best is None or total_score < best["score"]:
+                    best = {
+                        "score": total_score,
+                        "ap": search["ap_costs"][position] + treatment["ap"],
+                        "penalty": search["penalties"][position] + treatment["penalty"],
+                        "plan": (self.reconstruct_plan(search, position) or []) + treatment["actions"],
+                    }
+
+            if best is None:
+                return None
+
+            search_cost = best["score"]
+            ap_cost = best["ap"]
+            penalty = best["penalty"]
+            plan = best["plan"]
+
+        else:
+            return None
+
+        claim_penalty = self.get_claim_penalty(task)
+        effective_cost = search_cost + claim_penalty
+
+        evaluated = dict(task)
+        evaluated.update({
+            "search_cost": search_cost,
+            "ap_cost": ap_cost,
+            "wall_penalty": penalty,
+            "claim_penalty": claim_penalty,
+            "effective_cost": effective_cost,
+            "utility": -effective_cost,
+            "plan": plan,
+        })
+        return evaluated
+
+    def choose_task(self):
+        """Choose the task with the lowest Dijkstra weighted cost."""
+        tasks = self.get_tasks()
+
+        if not tasks:
+            return None
+
+        normal_search = None if self.carried_patient is not None else self.dijkstra(self.pos)
+        evaluated = []
+
+        for task in tasks:
+            result = self.evaluate_task(task, normal_search)
+            if result is not None:
+                evaluated.append(result)
+
+        if not evaluated:
+            return None
+
+        return max(
+            evaluated,
+            key=lambda task: (
+                task["utility"],
+                -getattr(task["target"], "unique_id", 0),
+            ),
+        )
+
+    def task_is_valid(self, task):
+        if task is None:
+            return False
+
+        if task["kind"] == "rescue_carried":
+            return self.carried_patient is task["target"]
+
+        return task["target"].pos is not None
+
+    def step_intelligent(self):
+        """Choose a coordinated low-cost task and execute one planned action."""
+        if self.recalculate_task or not self.task_is_valid(self.current_task):
+            self.current_task = self.choose_task()
+            self.recalculate_task = False
+
+        if self.current_task is None:
+            self.end_turn()
+            return False
+
+        normal_search = None if self.carried_patient is not None else self.dijkstra(self.pos)
+        evaluated = self.evaluate_task(self.current_task, normal_search)
+
+        if evaluated is None or not evaluated["plan"]:
+            self.current_task = self.choose_task()
+            if self.current_task is None:
+                self.end_turn()
+                return False
+            evaluated = self.current_task
+
+        self.current_task = evaluated
+        action = evaluated["plan"][0]
+
+        # If the next planned action is currently too expensive,
+        # keep the target reserved and continue it next turn.
+        if action not in self.get_available_actions():
+            self.end_turn()
+            return False
+
+        if not self.execute_action(action):
+            self.current_task = None
+            self.recalculate_task = True
+            self.end_turn()
+            return False
+
+        if not self.task_is_valid(self.current_task):
+            self.current_task = None
+            self.recalculate_task = True
+
+        return True
+
+    # ==========================================================
+    # STRATEGY DISPATCH
+    # ==========================================================
+
     def step(self):
         if self.strategy == "skip":
             self.end_turn()
             return False
 
         if self.strategy == "random":
-            actions = self.get_available_actions()
-            if not actions:
-                self.end_turn()
-                return False
+            return self.step_random()
 
-            if not self.execute_action(self.model.random.choice(actions)):
-                raise RuntimeError("A selected legal Doctor action could not execute.")
-            return True
+        if self.strategy == "intelligent":
+            return self.step_intelligent()
 
         raise ValueError(f"Unsupported Doctor strategy: {self.strategy}")

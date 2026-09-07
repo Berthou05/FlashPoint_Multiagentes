@@ -338,6 +338,25 @@ class PlagueSimulationModel(Model):
             self.grid.remove_agent(infestation)
         infestation.remove()
 
+    def demote_rat_king(self, rat_king):
+        position = rat_king.pos
+        king_id = rat_king.unique_id
+
+        self.remove_infestation(rat_king, emit_event=False)
+
+        swarm = RatSwarm(self)
+        self.grid.place_agent(swarm, position)
+
+        self.emit_event(
+            "rat_king_demoted",
+            rat_king_id=king_id,
+            rat_swarm_id=swarm.unique_id,
+            x=position[0],
+            y=position[1],
+        )
+
+        return swarm
+
     def promote_rat_swarm(self, swarm):
         """Replace a RatSwarm with a RatKing in the same cell."""
         position = swarm.pos

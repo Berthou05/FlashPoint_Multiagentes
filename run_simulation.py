@@ -24,7 +24,6 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--strategy",
-        choices=PlagueSimulationModel.SUPPORTED_STRATEGIES,
         default="random",
     )
     parser.add_argument("--num-agents", type=int, default=1)
