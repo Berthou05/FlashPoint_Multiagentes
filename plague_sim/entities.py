@@ -18,10 +18,6 @@ class POI(Agent):
         self.has_patient = has_patient
         self.is_revealed = False
 
-    def reveal(self):
-        self.is_revealed = True
-        return self.has_patient
-
 
 class RatSwarm(Agent):
     """PlaguePoint equivalent of Smoke."""
@@ -85,13 +81,6 @@ class Door:
     def close(self):
         if not self.is_destroyed:
             self.is_open = False
-
-    def toggle(self):
-        if self.is_destroyed:
-            return False
-
-        self.is_open = not self.is_open
-        return True
 
     def take_damage(self):
         """Destroy the door without adding structural house damage."""

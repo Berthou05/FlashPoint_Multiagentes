@@ -42,6 +42,18 @@ class TestServer(unittest.TestCase):
         connection.close()
         return response.status, data
 
+    def request_status(self, method, path, body=None):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port)
+        payload = json.dumps(body) if body is not None else None
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+
+        connection.request(method, path, body=payload, headers=headers)
+        response = connection.getresponse()
+        response.read()
+        status = response.status
+        connection.close()
+        return status
+
     def test_reset_initializes_one_skip_doctor_by_default(self):
         status, response = self.request_json("POST", "/reset", {})
 
@@ -121,6 +133,9 @@ class TestServer(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertEqual(response["state_version"], 2)
+
+    def test_post_rejects_json_arrays_at_http_boundary(self):
+        self.assertEqual(self.request_status("POST", "/reset", []), 400)
 
 
 if __name__ == "__main__":

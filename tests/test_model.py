@@ -1,7 +1,8 @@
 import unittest
 
-from plague_sim.entities import Door, RatKing, RatSwarm, Wall
+from plague_sim.entities import Door, POI, Patient, RatKing, RatSwarm, Wall
 from plague_sim.model import PlagueSimulationModel
+from server import build_state
 
 
 class TestPlagueSimulationModel(unittest.TestCase):
@@ -43,13 +44,16 @@ class TestPlagueSimulationModel(unittest.TestCase):
 
         self.assertEqual(self.model.turn, 1)
         self.assertTrue(first_doctor.turn_completed)
-        self.assertIs(self.model.get_active_doctor(), second_doctor)
+        self.assertIs(
+            self.model.doctors[self.model.active_doctor_index],
+            second_doctor,
+        )
 
     def test_reset_starts_doctor_phase_without_events(self):
         self.assertEqual(self.model.phase, "doctor")
         self.assertFalse(self.model.doctor_turn_started)
         self.assertEqual(self.model.turn, 0)
-        self.assertEqual(self.model.get_events(), [])
+        self.assertEqual(self.model.events, [])
 
     def test_step_doctor_completes_doctor_turn_and_enters_environment_phase(self):
         events = self.model.step_doctor()
@@ -63,7 +67,7 @@ class TestPlagueSimulationModel(unittest.TestCase):
         )
 
     def test_doctor_action_points_are_integers_in_state(self):
-        state = self.model.get_state()
+        state = build_state(self.model)
 
         self.assertTrue(all(
             isinstance(doctor["action_points"], int)
@@ -102,7 +106,7 @@ class TestPlagueSimulationModel(unittest.TestCase):
         )
 
     def test_state_uses_unity_contract_fields_without_null_values(self):
-        state = self.model.get_state()
+        state = build_state(self.model)
 
         self.assertEqual(state["phase"], "doctor")
         self.assertEqual(state["game_status"], "running")
@@ -155,13 +159,22 @@ class TestPlagueSimulationModel(unittest.TestCase):
         position = (2, 2)
 
         self.model.add_infestation(position)
-        self.assertIsInstance(self.model.get_infestation_at(position), RatSwarm)
+        self.assertTrue(any(
+            isinstance(entity, RatSwarm)
+            for entity in self.model.grid.get_cell_list_contents([position])
+        ))
 
         self.model.add_infestation(position)
-        self.assertIsInstance(self.model.get_infestation_at(position), RatKing)
+        self.assertTrue(any(
+            isinstance(entity, RatKing)
+            for entity in self.model.grid.get_cell_list_contents([position])
+        ))
 
         self.model.add_infestation(position)
-        self.assertGreaterEqual(len(self.model.get_cell_contents((1, 2))), 1)
+        self.assertGreaterEqual(
+            len(self.model.grid.get_cell_list_contents([(1, 2)])),
+            1,
+        )
 
     def test_poi_reveal_creates_a_patient_in_the_same_cell(self):
         poi = self.model.create_poi((2, 2), True)
@@ -170,8 +183,9 @@ class TestPlagueSimulationModel(unittest.TestCase):
 
         self.assertIsNotNone(patient)
         self.assertEqual(patient.pos, (2, 2))
-        self.assertIsNone(self.model.get_poi_at((2, 2)))
-        self.assertIs(self.model.get_patient_at((2, 2)), patient)
+        contents = self.model.grid.get_cell_list_contents([(2, 2)])
+        self.assertFalse(any(isinstance(entity, POI) for entity in contents))
+        self.assertIn(patient, contents)
 
     def test_new_poi_removes_existing_infestation(self):
         position = (2, 2)
@@ -180,8 +194,11 @@ class TestPlagueSimulationModel(unittest.TestCase):
         poi = self.model.place_poi(position)
 
         self.assertIsNotNone(poi)
-        self.assertIsNone(self.model.get_infestation_at(position))
-        self.assertIs(self.model.get_poi_at(position), poi)
+        contents = self.model.grid.get_cell_list_contents([position])
+        self.assertFalse(any(
+            isinstance(entity, (RatSwarm, RatKing)) for entity in contents
+        ))
+        self.assertIn(poi, contents)
 
     def test_rat_king_kills_revealed_patient(self):
         position = (2, 2)
@@ -189,7 +206,10 @@ class TestPlagueSimulationModel(unittest.TestCase):
 
         self.model.create_rat_king(position)
 
-        self.assertIsNone(self.model.get_patient_at(position))
+        self.assertFalse(any(
+            isinstance(entity, Patient)
+            for entity in self.model.grid.get_cell_list_contents([position])
+        ))
         self.assertEqual(self.model.patients_killed, 1)
         self.assertNotIn(patient, self.model.agents)
 
@@ -222,6 +242,43 @@ class TestPlagueSimulationModel(unittest.TestCase):
 
         self.assertEqual(random_model.doctor_turns_started, 1)
         self.assertEqual(random_model.get_statistics()["strategy"], "random")
+
+    def test_model_does_not_own_unity_snapshot_serialization(self):
+        self.assertFalse(hasattr(self.model, "get_state"))
+
+    def test_model_does_not_keep_trivial_query_or_turn_helpers(self):
+        removed_helpers = (
+            "clear_events",
+            "get_events",
+            "get_cell_contents",
+            "get_entities_at",
+            "get_infestation_at",
+            "get_poi_at",
+            "get_patient_at",
+            "get_patients_at",
+            "get_doctors_at",
+            "place_doctor",
+            "get_active_doctor",
+            "advance_active_doctor",
+        )
+
+        for helper in removed_helpers:
+            self.assertFalse(hasattr(self.model, helper), helper)
+
+    def test_build_state_matches_model_snapshot_contract(self):
+        state = build_state(self.model)
+
+        self.assertEqual(state["width"], self.model.width)
+        self.assertEqual(state["height"], self.model.height)
+        self.assertEqual(state["phase"], "doctor")
+        self.assertEqual(len(state["doctors"]), 1)
+        self.assertEqual(set(state["doctors"][0]), {
+            "id",
+            "x",
+            "y",
+            "action_points",
+            "carried_patient_id",
+        })
 
 
 if __name__ == "__main__":

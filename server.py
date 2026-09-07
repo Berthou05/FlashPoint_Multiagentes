@@ -2,6 +2,7 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from plague_sim.entities import Door, POI, Patient, RatKing, RatSwarm, Wall
 from plague_sim.model import PlagueSimulationModel
 
 
@@ -12,21 +13,81 @@ state_version = 0
 
 def create_model(strategy="skip", num_agents=1, seed=None):
     global model, state_version
-
-    model = PlagueSimulationModel(
-        strategy=strategy,
-        num_agents=num_agents,
-        seed=seed,
-    )
+    model = PlagueSimulationModel(strategy=strategy, num_agents=num_agents, seed=seed)
     state_version = 0
 
 
 def get_model():
-    """Return the current model, creating the default state if needed."""
+    global model
     if model is None:
         create_model()
-
     return model
+
+
+def build_state(simulation_model):
+    """Build the Unity snapshot from the Mesa model."""
+    walls = []
+    doors = []
+
+    for cells, boundary in simulation_model.boundaries.items():
+        cell_a, cell_b = cells
+        boundary_state = {
+            "id": simulation_model.boundary_ids[cells],
+            "ax": cell_a[0],
+            "ay": cell_a[1],
+            "bx": cell_b[0],
+            "by": cell_b[1],
+            "destroyed": boundary.is_destroyed,
+        }
+        if isinstance(boundary, Wall):
+            boundary_state["damage"] = boundary.damage
+            walls.append(boundary_state)
+        else:
+            boundary_state["open"] = boundary.is_open
+            doors.append(boundary_state)
+
+    active_doctor = simulation_model.doctors[simulation_model.active_doctor_index]
+    state = {
+        "width": simulation_model.width,
+        "height": simulation_model.height,
+        "turn": simulation_model.turn,
+        "strategy": simulation_model.strategy,
+        "phase": simulation_model.phase,
+        "active_doctor_id": active_doctor.unique_id,
+        "game_status": (
+            "victory" if simulation_model.game_over and simulation_model.game_won
+            else "defeat" if simulation_model.game_over
+            else "running"
+        ),
+        "house_damage": simulation_model.house_damage,
+        "patients_rescued": simulation_model.patients_rescued,
+        "patients_killed": simulation_model.patients_killed,
+        "walls": walls,
+        "doors": doors,
+        "rat_swarms": [],
+        "rat_kings": [],
+        "pois": [],
+        "patients": [],
+        "doctors": [],
+    }
+
+    entity_lists = {RatSwarm: "rat_swarms", RatKing: "rat_kings", POI: "pois", Patient: "patients"}
+    for entity in simulation_model.agents:
+        key = entity_lists.get(type(entity))
+        if key is not None and entity.pos is not None:
+            state[key].append({"id": entity.unique_id, "x": entity.pos[0], "y": entity.pos[1]})
+
+    for doctor in simulation_model.doctors:
+        carried_patient = doctor.carried_patient
+        state["doctors"].append({
+            "id": doctor.unique_id,
+            "x": doctor.pos[0],
+            "y": doctor.pos[1],
+            "action_points": doctor.action_points,
+            "carried_patient_id": carried_patient.unique_id if carried_patient is not None else -1,
+        })
+
+    return state
 
 
 class Server(BaseHTTPRequestHandler):
@@ -45,7 +106,7 @@ class Server(BaseHTTPRequestHandler):
             "api_version": API_VERSION,
             "state_version": state_version,
             "events": events or [],
-            "state": get_model().get_state(),
+            "state": build_state(get_model()),
         }
         self.wfile.write(json.dumps(response_data).encode("utf-8"))
 
@@ -55,19 +116,15 @@ class Server(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             self._set_response()
-            self.wfile.write(json.dumps({
-                "api_version": API_VERSION,
-                "status": "PlaguePoint server running",
-            }).encode("utf-8"))
-            return
-
-        if self.path == "/state":
+            self.wfile.write(json.dumps({"api_version": API_VERSION, "status": "PlaguePoint server running"}).encode("utf-8"))
+        elif self.path == "/state":
             self._send_game_response()
-            return
-
-        self.send_error(404)
+        else:
+            self.send_error(404)
 
     def do_POST(self):
+        global state_version
+
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
 
@@ -77,60 +134,40 @@ class Server(BaseHTTPRequestHandler):
             self.send_error(400, "Invalid JSON")
             return
 
+        if not isinstance(data, dict):
+            self.send_error(400, "JSON body must be an object")
+            return
+
         if self.path == "/reset":
-            strategy = data.get("strategy", "skip")
-            num_agents = data.get("num_agents", 1)
-            seed = data.get("seed")
-            try:
-                create_model(strategy, num_agents, seed)
-            except (TypeError, ValueError) as error:
-                self.send_error(400, str(error))
-                return
+            create_model(data.get("strategy", "skip"), data.get("num_agents", 1), data.get("seed"))
             self._send_game_response()
             return
 
         current_model = get_model()
-
         try:
             if self.path == "/step_doctor":
                 events = current_model.step_doctor()
-                self._advance_state_version(bool(events))
-                self._send_game_response(events)
-                return
-
-            if self.path == "/step_environment":
+                state_version_increment = int(bool(events))
+            elif self.path == "/step_environment":
                 events = current_model.step_environment()
-                self._advance_state_version(bool(events))
-                self._send_game_response(events)
-                return
-
-            if self.path in ("/step_complete_turn", "/step"):
+                state_version_increment = int(bool(events))
+            elif self.path in ("/step_complete_turn", "/step"):
                 events = current_model.step_complete_turn()
-                phase_events = {
-                    event["type"]
-                    for event in events
-                    if event["type"] in ("doctor_turn_started", "environment_started")
-                }
-                self._advance_state_version(len(phase_events))
-                self._send_game_response(events)
+                state_version_increment = sum(event["type"] in ("doctor_turn_started", "environment_started") for event in events)
+            else:
+                self.send_error(404)
                 return
         except (ValueError, RuntimeError) as error:
             self.send_error(409, str(error))
             return
 
-        self.send_error(404)
-
-    @staticmethod
-    def _advance_state_version(amount=1):
-        global state_version
-        state_version += amount
+        state_version += state_version_increment
+        self._send_game_response(events)
 
 
 def run(server_class=HTTPServer, handler_class=Server, port=8585):
     logging.basicConfig(level=logging.INFO)
-    server_address = ("", port)
-    httpd = server_class(server_address, handler_class)
-
+    httpd = server_class(("", port), handler_class)
     logging.info("Starting PlaguePoint server on port %s...", port)
 
     try:
