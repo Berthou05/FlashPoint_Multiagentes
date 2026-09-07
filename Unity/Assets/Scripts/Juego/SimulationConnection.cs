@@ -12,6 +12,8 @@ public class SimulationConnection : MonoBehaviour
     // Aquí guardamos la última respuesta completa que llegó de Python.
     // Incluye tanto los eventos como el estado final.
     public SimulationResponse currentResponse;
+   // Referencia al script que dibuja el estado en el tablero
+    public SimulationRenderer simRenderer; 
 
 
     void Start()
@@ -87,6 +89,7 @@ public class SimulationConnection : MonoBehaviour
             if (currentResponse != null &&
                 currentResponse.state != null)
             {
+                simRenderer.RenderState();
                 Debug.Log("Conectado con Mesa");
 
                 Debug.Log(
