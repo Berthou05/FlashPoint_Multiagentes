@@ -6,7 +6,7 @@ import json
 from plague_sim.model import PlagueSimulationModel
 
 
-def run_game(strategy="random", num_agents=1, seed=None, max_turns=500):
+def run_game(strategy="random", num_agents=4, seed=None, max_turns=500):
     """Run complete turns until the game ends or the chosen limit is reached."""
     model = PlagueSimulationModel(strategy=strategy, num_agents=num_agents, seed=seed)
 
@@ -24,9 +24,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--strategy",
-        default="random",
+        default="intelligent",
     )
-    parser.add_argument("--num-agents", type=int, default=1)
+    parser.add_argument("--num-agents", type=int, default=4)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--max-turns", type=int, default=500)
     return parser.parse_args()

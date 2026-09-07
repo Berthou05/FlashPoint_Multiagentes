@@ -15,6 +15,16 @@ class PlagueDoctorAgent(mesa.Agent):
     MAX_ACTION_POINTS = 8
     WALL_BREAK_PENALTY = 4
     TARGET_CLAIM_PENALTY = 5
+    RESCUE_PATIENT_BENEFIT = 10
+
+    RISK_WEIGHTS = {
+        "new_swarm": 1,
+        "new_king": 2,
+        "structural_damage": 3,
+        "door_destroyed": 1,
+        "poi_destroyed": 5,
+        "patient_killed": 8,
+    }
 
     ACTION_COSTS = {
         "move": 1,
@@ -224,6 +234,55 @@ class PlagueDoctorAgent(mesa.Agent):
 
         return tasks
 
+    # ==========================================================
+    # Risk evaluation for each posible task
+    # =========================================================
+
+    def score_risk_outcome(self, outcome):
+        risk = 0
+        risk += len(outcome["new_swarms"]) * self.RISK_WEIGHTS["new_swarm"]
+        risk += len(outcome["new_kings"]) * self.RISK_WEIGHTS["new_king"]
+        risk += outcome["structural_damage"] * self.RISK_WEIGHTS["structural_damage"]
+        risk += outcome["doors_destroyed"] * self.RISK_WEIGHTS["door_destroyed"]
+        risk += len(outcome["pois_destroyed"]) * self.RISK_WEIGHTS["poi_destroyed"]
+        risk += len(outcome["patients_killed"]) * self.RISK_WEIGHTS["patient_killed"]
+        return risk
+
+    def build_risk_map(self):
+        risk_map = {}
+        for x in range(1, self.model.width - 1):
+            for y in range(1, self.model.height - 1):
+                position = (x, y)
+                outcome = self.model.predict_infestation(position)
+                outcome["risk"] = self.score_risk_outcome(outcome)
+                risk_map[position] = outcome
+        return risk_map
+
+    def get_task_risk(self, task, risk_map):
+        kind = task["kind"]
+        target = task["target"]
+
+        if kind in ("treat_rat_swarm", "treat_rat_king"):
+            return risk_map[target.pos]["risk"] if target.pos is not None else 0
+
+        if kind in ("rescue", "rescue_carried"):
+            return sum(
+                target.unique_id in outcome["patients_killed"]
+                for outcome in risk_map.values()
+            )
+
+        if kind == "investigate":
+            return sum(
+                target.unique_id in outcome["pois_destroyed"]
+                for outcome in risk_map.values()
+            )
+
+        return 0
+
+    # =========================================================
+    # PATHFINDING AND TASK EVALUATION
+    # =========================================================
+
     def get_path_transition(self, current, target, carrying=False):
         """Return Dijkstra cost and actions needed to cross one neighboring edge."""
         if not self.model.are_neighbors(current, target):
@@ -366,78 +425,67 @@ class PlagueDoctorAgent(mesa.Agent):
 
         return claimed_by_others * self.TARGET_CLAIM_PENALTY
 
-    def evaluate_task(self, task, normal_search=None):
-        """Add Dijkstra cost, utility and an executable first-phase plan to a task."""
+    def evaluate_task(self, task, normal_search=None, risk_map=None):
+        """Calculate the plan, cost and risk of one task."""
         kind = task["kind"]
         target = task["target"]
 
         if kind == "rescue_carried":
             search = self.dijkstra(self.pos, carrying=True)
+            exits = [self.pos] if self.model.is_exterior_position(self.pos) else [position for position in self.model.EXTERIOR_ENTRANCES if position in search["scores"]]
 
-            if self.model.is_exterior_position(self.pos):
-                best_exit = self.pos
-            else:
-                reachable_exits = [position for position in self.model.EXTERIOR_ENTRANCES if position in search["scores"]]
-                if not reachable_exits:
-                    return None
-                best_exit = min(reachable_exits, key=lambda position: search["scores"][position])
+            if not exits:
+                return None
 
-            plan = self.reconstruct_plan(search, best_exit) or []
-            plan.append(("drop_patient", None))
-
-            search_cost = search["scores"][best_exit]
+            best_exit = min(exits, key=lambda position: search["scores"][position])
             ap_cost = search["ap_costs"][best_exit]
             penalty = search["penalties"][best_exit]
+            plan = (self.reconstruct_plan(search, best_exit) or []) + [("drop_patient", None)]
 
         elif kind == "rescue":
             if target.pos is None:
                 return None
 
             search = normal_search or self.dijkstra(self.pos)
+
             if target.pos not in search["scores"]:
                 return None
 
-            to_patient_plan = self.reconstruct_plan(search, target.pos)
             carrying_search = self.dijkstra(target.pos, carrying=True)
-            reachable_exits = [position for position in self.model.EXTERIOR_ENTRANCES if position in carrying_search["scores"]]
+            exits = [position for position in self.model.EXTERIOR_ENTRANCES if position in carrying_search["scores"]]
 
-            if not reachable_exits:
+            if not exits:
                 return None
 
-            best_exit = min(reachable_exits, key=lambda position: carrying_search["scores"][position])
+            best_exit = min(exits, key=lambda position: carrying_search["scores"][position])
 
-            search_cost = search["scores"][target.pos] + carrying_search["scores"][best_exit]
             ap_cost = search["ap_costs"][target.pos] + carrying_search["ap_costs"][best_exit]
             penalty = search["penalties"][target.pos] + carrying_search["penalties"][best_exit]
-
-            # Execute only the route to the Patient now. Once picked up,
-            # the next intelligent step recalculates the carrying route.
-            plan = to_patient_plan + [("pick_up_patient", target)]
+            plan = self.reconstruct_plan(search, target.pos) + [("pick_up_patient", target)]
 
         elif kind == "investigate":
             if target.pos is None:
                 return None
 
             search = normal_search or self.dijkstra(self.pos)
+
             if target.pos not in search["scores"]:
                 return None
 
-            search_cost = search["scores"][target.pos]
-            ap_cost = search["ap_costs"][target.pos]
-            penalty = search["penalties"][target.pos]
             plan = self.reconstruct_plan(search, target.pos)
 
             if not plan:
                 return None
+
+            ap_cost = search["ap_costs"][target.pos]
+            penalty = search["penalties"][target.pos]
 
         elif kind in ("treat_rat_swarm", "treat_rat_king"):
             if target.pos is None:
                 return None
 
             search = normal_search or self.dijkstra(self.pos)
-            candidates = [self.pos] if self.pos == target.pos else []
-            candidates += self.model.get_neighbors(target.pos)
-
+            candidates = ([self.pos] if self.pos == target.pos else []) + self.model.get_neighbors(target.pos)
             best = None
 
             for position in candidates:
@@ -445,14 +493,15 @@ class PlagueDoctorAgent(mesa.Agent):
                     continue
 
                 treatment = self.get_treatment_transition(position, target)
+
                 if treatment is None:
                     continue
 
-                total_score = search["scores"][position] + treatment["score"]
+                score = search["scores"][position] + treatment["score"]
 
-                if best is None or total_score < best["score"]:
+                if best is None or score < best["score"]:
                     best = {
-                        "score": total_score,
+                        "score": score,
                         "ap": search["ap_costs"][position] + treatment["ap"],
                         "penalty": search["penalties"][position] + treatment["penalty"],
                         "plan": (self.reconstruct_plan(search, position) or []) + treatment["actions"],
@@ -461,7 +510,6 @@ class PlagueDoctorAgent(mesa.Agent):
             if best is None:
                 return None
 
-            search_cost = best["score"]
             ap_cost = best["ap"]
             penalty = best["penalty"]
             plan = best["plan"]
@@ -469,46 +517,50 @@ class PlagueDoctorAgent(mesa.Agent):
         else:
             return None
 
+        if risk_map is None:
+            risk_map = self.build_risk_map()
+
+        risk = self.get_task_risk(task, risk_map)
         claim_penalty = self.get_claim_penalty(task)
+        search_cost = ap_cost + penalty
         effective_cost = search_cost + claim_penalty
+        utility = risk - effective_cost
 
         evaluated = dict(task)
         evaluated.update({
+            "risk": risk,
             "search_cost": search_cost,
             "ap_cost": ap_cost,
             "wall_penalty": penalty,
             "claim_penalty": claim_penalty,
             "effective_cost": effective_cost,
-            "utility": -effective_cost,
+            "utility": utility,
             "plan": plan,
         })
+
         return evaluated
 
     def choose_task(self):
-        """Choose the task with the lowest Dijkstra weighted cost."""
+        """Choose the task with the highest utility."""
         tasks = self.get_tasks()
 
         if not tasks:
             return None
 
         normal_search = None if self.carried_patient is not None else self.dijkstra(self.pos)
+        risk_map = self.build_risk_map()
         evaluated = []
 
         for task in tasks:
-            result = self.evaluate_task(task, normal_search)
+            result = self.evaluate_task(task, normal_search, risk_map)
+
             if result is not None:
                 evaluated.append(result)
 
         if not evaluated:
             return None
 
-        return max(
-            evaluated,
-            key=lambda task: (
-                task["utility"],
-                -getattr(task["target"], "unique_id", 0),
-            ),
-        )
+        return max(evaluated, key=lambda task: (task["utility"], -getattr(task["target"], "unique_id", 0)))
 
     def task_is_valid(self, task):
         if task is None:

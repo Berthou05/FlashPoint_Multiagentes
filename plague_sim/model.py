@@ -489,12 +489,157 @@ class PlagueSimulationModel(Model):
     def remove_exterior_rat_kings(self):
         """Remove outbreak RatKings that ended outside the house."""
         for entity in list(self.agents):
-            if (
-                isinstance(entity, RatKing)
-                and entity.pos is not None
-                and self.is_exterior_position(entity.pos)
-            ):
+            if (isinstance(entity, RatKing) and entity.pos is not None and self.is_exterior_position(entity.pos)):
                 self.remove_infestation(entity)
+
+    def predict_infestation(self, position):
+        """Predict the damage caused by one infestation roll without changing the real board."""
+
+        infestations = {}
+        patients = {}
+        pois = {}
+
+        for entity in self.agents:
+            if isinstance(entity, RatSwarm) and entity.pos is not None:
+                infestations[entity.pos] = "swarm"
+            elif isinstance(entity, RatKing) and entity.pos is not None:
+                infestations[entity.pos] = "king"
+            elif isinstance(entity, Patient) and entity.pos is not None:
+                patients.setdefault(entity.pos, set()).add(entity.unique_id)
+            elif isinstance(entity, POI) and entity.pos is not None:
+                pois[entity.pos] = entity.unique_id
+
+        boundaries = {}
+
+        for key, boundary in self.boundaries.items():
+            boundaries[key] = {
+                "type": "wall" if isinstance(boundary, Wall) else "door",
+                "damage": boundary.damage,
+                "destroyed": boundary.is_destroyed,
+                "open": boundary.is_open if isinstance(boundary, Door) else False,
+            }
+
+        outcome = {
+            "new_swarms": set(),
+            "new_kings": set(),
+            "structural_damage": 0,
+            "doors_destroyed": 0,
+            "patients_killed": set(),
+            "pois_destroyed": set(),
+        }
+
+        def resolve_king_cell(cell):
+            outcome["patients_killed"].update(patients.pop(cell, set()))
+
+            if cell in pois:
+                outcome["pois_destroyed"].add(pois.pop(cell))
+
+        def create_king(cell):
+            if infestations.get(cell) == "swarm":
+                outcome["new_swarms"].discard(cell)
+
+            infestations[cell] = "king"
+            outcome["new_kings"].add(cell)
+            resolve_king_cell(cell)
+
+        def can_cross(cell_a, cell_b):
+            boundary = boundaries.get(self.edge_key(cell_a, cell_b))
+
+            if boundary is None:
+                return True
+
+            if boundary["type"] == "wall":
+                return boundary["destroyed"]
+
+            return boundary["destroyed"] or boundary["open"]
+
+        def hit_boundary(cell_a, cell_b):
+            boundary = boundaries.get(self.edge_key(cell_a, cell_b))
+
+            if boundary is None:
+                return True
+
+            if boundary["type"] == "wall":
+                if boundary["destroyed"]:
+                    return True
+
+                boundary["damage"] += 1
+                outcome["structural_damage"] += 1
+
+                if boundary["damage"] >= Wall.MAX_DAMAGE:
+                    boundary["destroyed"] = True
+
+                return False
+
+            if boundary["destroyed"]:
+                return True
+
+            was_open = boundary["open"]
+            boundary["destroyed"] = True
+            boundary["open"] = True
+            outcome["doors_destroyed"] += 1
+
+            return was_open
+
+        def outbreak(origin):
+            for dx, dy in self.DIRECTIONS:
+                current = origin
+
+                while True:
+                    target = (current[0] + dx, current[1] + dy)
+
+                    if not self.is_inside_board(target):
+                        break
+
+                    if not hit_boundary(current, target):
+                        break
+
+                    infestation = infestations.get(target)
+
+                    if infestation is None:
+                        create_king(target)
+                        break
+
+                    if infestation == "swarm":
+                        create_king(target)
+                        break
+
+                    current = target
+
+        infestation = infestations.get(position)
+
+        if infestation is None:
+            infestations[position] = "swarm"
+            outcome["new_swarms"].add(position)
+
+        elif infestation == "swarm":
+            create_king(position)
+
+        else:
+            outbreak(position)
+
+        king_positions = [cell for cell, kind in infestations.items() if kind == "king"]
+        index = 0
+
+        while index < len(king_positions):
+            king = king_positions[index]
+            index += 1
+
+            for neighbor in self.get_neighbors(king):
+                if infestations.get(neighbor) != "swarm":
+                    continue
+
+                if not can_cross(king, neighbor):
+                    continue
+
+                create_king(neighbor)
+                king_positions.append(neighbor)
+
+        for cell in list(outcome["new_kings"]):
+            if self.is_exterior_position(cell):
+                outcome["new_kings"].discard(cell)
+
+        return outcome
 
     # ==========================================================
     # POIs and Patients

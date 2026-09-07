@@ -193,6 +193,11 @@ class TestPlagueDoctorActions(unittest.TestCase):
         self.assertIn(random_model.phase, ("doctor", "finished"))
         self.assertGreaterEqual(random_model.turn, 0)
 
+    def test_risk_map_covers_every_interior_cell(self):
+        risk_map = self.doctor.build_risk_map()
+
+        self.assertIn((7, 5), risk_map)
+
 
 if __name__ == "__main__":
     unittest.main()
