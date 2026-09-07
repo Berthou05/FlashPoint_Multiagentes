@@ -47,6 +47,7 @@ public class SimulationRenderer : MonoBehaviour
         RenderRatKings(state.rat_kings);
         RenderPois(state.pois);
         RenderPatients(state.patients);
+        RenderWalls(state.walls);
     }
 
 
@@ -254,6 +255,44 @@ public class SimulationRenderer : MonoBehaviour
         }
 
         RemoveMissingPatients(idsActuales);
+    }
+
+    void RenderWalls(WallData[] datos)
+    {
+        if (datos == null)
+        {
+            return;
+        }
+
+        GameObject wallsObject = GameObject.Find("Walls");
+
+        if (wallsObject == null)
+        {
+            Debug.LogError("No se encontró el objeto Walls.");
+            return;
+        }
+
+        Wall[] walls = wallsObject.GetComponentsInChildren<Wall>(true);
+
+        for (int i = 0; i < datos.Length; i++)
+        {
+            for (int j = 0; j < walls.Length; j++)
+            {
+                bool mismasCoordenadas =
+                    walls[j].ax == datos[i].ax &&
+                    walls[j].ay == datos[i].ay &&
+                    walls[j].bx == datos[i].bx &&
+                    walls[j].by == datos[i].by;
+
+                if (mismasCoordenadas)
+                {
+                    walls[j].UpdateWall(
+                        datos[i].damage,
+                        datos[i].destroyed
+                    );
+                }
+            }
+        }
     }
 
 
