@@ -15,6 +15,13 @@ public class SimulationConnection : MonoBehaviour
    // Referencia al script que dibuja el estado en el tablero
     public SimulationRenderer simRenderer; 
 
+    // Referencias nuevas para la UI
+    public HUDController hudController;
+    public ActiveDoctorCardController activeDoctorCard;
+    public DoctorCirclesController doctorCircles;
+
+
+
 
     void Start()
     {
@@ -57,6 +64,21 @@ public class SimulationConnection : MonoBehaviour
         return SendRequest("/step_environment", UnityWebRequest.kHttpVerbPOST, "{}");
     }
 
+  // Wrappers para poder conectar estas acciones directamente a botones de UI
+    public void OnClickStepDoctor()
+    {
+        StartCoroutine(StepDoctor());
+    }
+
+    public void OnClickStepEnvironment()
+    {
+        StartCoroutine(StepEnvironment());
+    }
+
+    public void OnClickReset()
+    {
+        StartCoroutine(ResetSimulation());
+    }
 
     private IEnumerator SendRequest(string endpoint, string method, string body = null)
     {
@@ -90,6 +112,10 @@ public class SimulationConnection : MonoBehaviour
                 currentResponse.state != null)
             {
                 simRenderer.RenderState();
+                hudController.UpdateHUD();
+                activeDoctorCard.UpdateActiveCard();
+                doctorCircles.UpdateDoctorCircles();
+
                 Debug.Log("Conectado con Mesa");
 
                 Debug.Log(
