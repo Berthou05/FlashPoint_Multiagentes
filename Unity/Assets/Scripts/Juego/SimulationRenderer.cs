@@ -279,10 +279,15 @@ public class SimulationRenderer : MonoBehaviour
             for (int j = 0; j < walls.Length; j++)
             {
                 bool mismasCoordenadas =
-                    walls[j].ax == datos[i].ax &&
+                    (walls[j].ax == datos[i].ax &&
                     walls[j].ay == datos[i].ay &&
                     walls[j].bx == datos[i].bx &&
-                    walls[j].by == datos[i].by;
+                    walls[j].by == datos[i].by)
+                    ||
+                    (walls[j].ax == datos[i].bx &&
+                    walls[j].ay == datos[i].by &&
+                    walls[j].bx == datos[i].ax &&
+                    walls[j].by == datos[i].ay);
 
                 if (mismasCoordenadas)
                 {
