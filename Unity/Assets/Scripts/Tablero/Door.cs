@@ -10,8 +10,12 @@ public class Door : MonoBehaviour
     public bool isOpen;
     public bool isDestroyed;
 
+    private Quaternion closedRotation;
+
     void Awake()
     {
+        closedRotation = transform.rotation;
+
         AssignCoordinates();
     }
 
@@ -45,5 +49,30 @@ public class Door : MonoBehaviour
             bx = cellX + 1;
             by = cellY;
         }
+    }
+
+    public void UpdateDoor(bool open, bool destroyed)
+    {
+        isOpen = open;
+        isDestroyed = destroyed;
+
+        if (isDestroyed)
+        {
+            gameObject.SetActive(false);
+        }
+        else
+        {
+            gameObject.SetActive(true);
+
+            if (isOpen)
+            {
+                transform.rotation = closedRotation * Quaternion.Euler(0f, 90f, 0f);
+            }
+            else
+            {
+                transform.rotation = closedRotation;
+            }
+        }
+
     }
 }
