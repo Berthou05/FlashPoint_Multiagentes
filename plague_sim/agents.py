@@ -14,7 +14,7 @@ class PlagueDoctorAgent(mesa.Agent):
 
     MAX_ACTION_POINTS = 8
     WALL_BREAK_PENALTY = 4
-    TARGET_CLAIM_PENALTY = 5
+    TARGET_CLAIM_PENALTY = 0
 
     ACTION_COSTS = {
         "move": 1,
@@ -89,9 +89,11 @@ class PlagueDoctorAgent(mesa.Agent):
         treatment_positions = [self.pos] + [target for target in neighbors if self.model.can_cross(self.pos, target)]
         for position in treatment_positions:
             infestation = self.model.get_entity(position, (RatSwarm, RatKing))
-            if infestation is not None:
-                kind = "treat_rat_swarm" if isinstance(infestation, RatSwarm) else "treat_rat_king"
-                actions.append((kind, infestation))
+            if isinstance(infestation, RatSwarm):
+                actions.append(("treat_rat_swarm", infestation))
+            elif isinstance(infestation, RatKing):
+                actions.append(("reduce_rat_king", infestation))
+                actions.append(("treat_rat_king", infestation))
 
         if self.carried_patient is None:
             for patient in self.model.grid.get_cell_list_contents([self.pos]):
