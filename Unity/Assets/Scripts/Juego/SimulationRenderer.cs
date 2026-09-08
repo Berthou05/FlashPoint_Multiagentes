@@ -405,7 +405,11 @@ public class SimulationRenderer : MonoBehaviour
 
                 if (mismasCoordenadas)
                 {
-                    doors[j].UpdateDoor(datos[i].open, datos[i].destroyed);
+                    doors[j].UpdateDoor(
+                        datos[i].open,
+                        datos[i].destroyed
+                    );
+
                     break;
                 }
             }
