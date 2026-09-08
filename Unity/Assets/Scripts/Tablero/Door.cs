@@ -46,4 +46,10 @@ public class Door : MonoBehaviour
             by = cellY;
         }
     }
+
+    public void UpdateDoor(bool open, bool destroyed)
+    {
+        isOpen = open;
+        isDestroyed = destroyed;
+    }
 }

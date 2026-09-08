@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -15,6 +16,9 @@ public class SimulationRenderer : MonoBehaviour
 
     // Conexión con Python
     public SimulationConnection connection;
+
+    // Duración visual de cada evento doctor_moved que llega del servidor.
+    public float doctorMoveDuration = 0.35f;
 
     // Aquí guardamos los objetos que ya existen en Unity.
     // El número es el ID que manda Mesa.
@@ -40,7 +44,45 @@ public class SimulationRenderer : MonoBehaviour
             return;
         }
 
-        SimulationState state = connection.currentResponse.state;
+        RenderState(connection.currentResponse.state);
+    }
+
+    // Reproduce los movimientos antes de aplicar el estado final del servidor.
+    public IEnumerator RenderResponse(SimulationResponse response)
+    {
+        if (response == null || response.state == null)
+        {
+            yield break;
+        }
+
+        if (response.events != null)
+        {
+            for (int i = 0; i < response.events.Length; i++)
+            {
+                SimulationEvent simulationEvent = response.events[i];
+
+                if (simulationEvent.type == "doctor_moved" ||
+                    simulationEvent.type == "doctor_knocked_down")
+                {
+                    GameObject doctorObject;
+
+                    if (doctors.TryGetValue(simulationEvent.id, out doctorObject))
+                    {
+                        yield return StartCoroutine(MoveDoctor(
+                            doctorObject,
+                            simulationEvent.to_x,
+                            simulationEvent.to_y
+                        ));
+                    }
+                }
+            }
+        }
+
+        RenderState(response.state);
+    }
+
+    void RenderState(SimulationState state)
+    {
 
         RenderDoctors(state.doctors);
         RenderRatSwarms(state.rat_swarms);
@@ -50,6 +92,33 @@ public class SimulationRenderer : MonoBehaviour
 
         RenderWalls(state.walls); 
         RenderDoors(state.doors);
+    }
+
+    IEnumerator MoveDoctor(GameObject doctorObject, int x, int y)
+    {
+        Vector3 initialPosition = doctorObject.transform.position;
+        Vector3 finalPosition = positionConverter.ConvertToUnityPosition(x, y);
+
+        if (doctorMoveDuration <= 0f)
+        {
+            doctorObject.transform.position = finalPosition;
+            yield break;
+        }
+
+        float elapsed = 0f;
+
+        while (elapsed < doctorMoveDuration)
+        {
+            elapsed += Time.deltaTime;
+            doctorObject.transform.position = Vector3.Lerp(
+                initialPosition,
+                finalPosition,
+                elapsed / doctorMoveDuration
+            );
+            yield return null;
+        }
+
+        doctorObject.transform.position = finalPosition;
     }
 
 
@@ -324,16 +393,20 @@ public class SimulationRenderer : MonoBehaviour
             for (int j = 0; j < doors.Length; j++)
             {
                 bool mismasCoordenadas =
-                    doors[j].ax == datos[i].ax &&
+                    (doors[j].ax == datos[i].ax &&
                     doors[j].ay == datos[i].ay &&
                     doors[j].bx == datos[i].bx &&
-                    doors[j].by == datos[i].by;
+                    doors[j].by == datos[i].by)
+                    ||
+                    (doors[j].ax == datos[i].bx &&
+                    doors[j].ay == datos[i].by &&
+                    doors[j].bx == datos[i].ax &&
+                    doors[j].by == datos[i].ay);
 
                 if (mismasCoordenadas)
                 {
-                    Debug.Log("Puerta encontrada: " +
-                        datos[i].ax + "," + datos[i].ay + " - " +
-                        datos[i].bx + "," + datos[i].by);
+                    doors[j].UpdateDoor(datos[i].open, datos[i].destroyed);
+                    break;
                 }
             }
         }
