@@ -229,7 +229,7 @@ class PlagueDoctorAgent(mesa.Agent):
         return tasks
 
     def get_path_transition(self, current, target, carrying=False, cleared_edges=None):
-        """Return Dijkstra cost and actions needed to cross one neighboring edge."""
+        """Return Dijkstra cost and actions needed to safely cross one neighboring edge."""
         if not self.model.are_neighbors(current, target):
             return None
 
@@ -252,10 +252,15 @@ class PlagueDoctorAgent(mesa.Agent):
                 ap_cost += hits * self.ACTION_COSTS["damage_wall"]
                 penalty += self.WALL_BREAK_PENALTY
 
-        infestation = self.model.get_entity(target, RatKing)
-        if infestation is not None:
-            actions.append(("reduce_rat_king", infestation))
-            ap_cost += self.ACTION_COSTS["reduce_rat_king"]
+        infestation = self.model.get_entity(target, (RatSwarm, RatKing))
+
+        if isinstance(infestation, RatSwarm):
+            actions.append(("treat_rat_swarm", infestation))
+            ap_cost += self.ACTION_COSTS["treat_rat_swarm"]
+
+        elif isinstance(infestation, RatKing):
+            actions.append(("treat_rat_king", infestation))
+            ap_cost += self.ACTION_COSTS["treat_rat_king"]
 
         actions.append(("move", target))
         ap_cost += move_cost
