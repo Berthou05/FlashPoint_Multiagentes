@@ -14,7 +14,7 @@ def average(values):
 
 def run_batch(
     strategy="intelligent",
-    num_agents=6,
+    num_agents=4,
     max_turns=500,
     games=100,
     seed_start=1,
@@ -113,7 +113,7 @@ def run_batch(
 def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", default="intelligent")
-    parser.add_argument("--num-agents", type=int, default=6)
+    parser.add_argument("--num-agents", type=int, default=4)
     parser.add_argument("--max-turns", type=int, default=500)
     parser.add_argument("--games", type=int, default=100)
     parser.add_argument("--seed-start", type=int, default=1)
