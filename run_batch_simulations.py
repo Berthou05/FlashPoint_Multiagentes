@@ -8,6 +8,10 @@ import sys
 from run_simulation import run_game
 
 
+def average(values):
+    return sum(values) / len(values) if values else None
+
+
 def run_batch(
     strategy="intelligent",
     num_agents=4,
@@ -18,31 +22,43 @@ def run_batch(
     workers=None,
 ):
     """Run consecutive seeds and return aggregate outcome statistics."""
-    won_turns = []
-    lost_turns = []
-    successes = 0
-    truncated_at_limit = 0
+    wins = []
+    losses = []
+    collapses = []
+    patient_losses = []
+    truncated = []
 
     with ProcessPoolExecutor(max_workers=workers) as executor:
-        simulations = [
-            executor.submit(run_game, strategy, num_agents, seed, max_turns)
+        simulations = {
+            executor.submit(run_game, strategy, num_agents, seed, max_turns): seed
             for seed in range(seed_start, seed_start + games)
-        ]
+        }
 
         for completed, simulation in enumerate(as_completed(simulations), start=1):
+            seed = simulations[simulation]
             result = simulation.result()
+            result["seed"] = seed
 
             if result["result"] == "victory":
-                successes += 1
-                won_turns.append(result["turns_completed"])
+                wins.append(result)
             else:
-                lost_turns.append(result["turns_completed"])
+                losses.append(result)
 
-            if result["truncated"]:
-                truncated_at_limit += 1
+                if result.get("end_reason") == "collapse":
+                    collapses.append(result)
+                elif result.get("end_reason") == "patients_killed_4":
+                    patient_losses.append(result)
+
+            if result.get("truncated"):
+                truncated.append(result)
 
             if progress:
                 print(f"Completed {completed}/{games}", file=sys.stderr)
+
+    def avg(results, key):
+        return average([result[key] for result in results])
+
+    failures = len(losses)
 
     return {
         "strategy": strategy,
@@ -50,14 +66,50 @@ def run_batch(
         "games": games,
         "seed_start": seed_start,
         "seed_end": seed_start + games - 1,
-        "successes": successes,
-        "failures": games - successes,
-        "average_turns_won": sum(won_turns) / len(won_turns) if won_turns else None,
-        "average_turns_lost": sum(lost_turns) / len(lost_turns) if lost_turns else None,
-        "truncated_at_limit": truncated_at_limit,
+
+        "successes": len(wins),
+        "failures": failures,
+        "win_rate": len(wins) / games,
+
+        "losses_by_collapse": len(collapses),
+        "losses_by_patients": len(patient_losses),
+        "truncated_at_limit": len(truncated),
+
+        "collapse_rate_all_games": len(collapses) / games,
+        "patient_loss_rate_all_games": len(patient_losses) / games,
+        "truncated_rate_all_games": len(truncated) / games,
+
+        "collapse_share_of_failures": len(collapses) / failures if failures else 0,
+        "patient_loss_share_of_failures": len(patient_losses) / failures if failures else 0,
+        "truncated_share_of_failures": len(truncated) / failures if failures else 0,
+
+        "average_turns_won": avg(wins, "turns_completed"),
+        "average_turns_lost": avg(losses, "turns_completed"),
+
+        "average_patients_rescued": avg(wins + losses, "patients_rescued"),
+        "average_patients_killed": avg(wins + losses, "patients_killed"),
+        "average_house_damage": avg(wins + losses, "house_damage"),
+
+        "average_patients_rescued_won": avg(wins, "patients_rescued"),
+        "average_patients_killed_won": avg(wins, "patients_killed"),
+        "average_house_damage_won": avg(wins, "house_damage"),
+
+        "average_patients_rescued_lost": avg(losses, "patients_rescued"),
+        "average_patients_killed_lost": avg(losses, "patients_killed"),
+        "average_house_damage_lost": avg(losses, "house_damage"),
+
+        "average_turns_collapse": avg(collapses, "turns_completed"),
+        "average_patients_rescued_collapse": avg(collapses, "patients_rescued"),
+        "average_patients_killed_collapse": avg(collapses, "patients_killed"),
+        "average_house_damage_collapse": avg(collapses, "house_damage"),
+
+        "average_turns_patient_loss": avg(patient_losses, "turns_completed"),
+        "average_patients_rescued_patient_loss": avg(patient_losses, "patients_rescued"),
+        "average_patients_killed_patient_loss": avg(patient_losses, "patients_killed"),
+        "average_house_damage_patient_loss": avg(patient_losses, "house_damage"),
     }
 
-    
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", default="intelligent")
@@ -72,6 +124,7 @@ def parse_arguments():
 
 if __name__ == "__main__":
     arguments = parse_arguments()
+
     print(json.dumps(
         run_batch(
             strategy=arguments.strategy,
