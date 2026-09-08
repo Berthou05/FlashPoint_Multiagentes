@@ -1,18 +1,26 @@
 using UnityEngine;
-using TMPro; // si usas Text normal en vez de TextMeshPro, cambia esto por UnityEngine.UI
+using UnityEngine.UI;
+using TMPro;
 
 public class HUDController : MonoBehaviour
 {
-    // Referencia a la conexión para leer el estado más reciente
     public SimulationConnection connection;
 
-    // Arrastra aquí los textos de tu Canvas (uno por dato)
-    public TMP_Text turnoText;
-    public TMP_Text victimasRescatadasText;
-    public TMP_Text victimasMuertasText;
-    public TMP_Text danoCasaText;
+    [Header("Global Stats")]
+    public TMP_Text savedText;
+    public TMP_Text killedText;
+    public TMP_Text damageText;
+    public TMP_Text turnText;
 
-    // Llama esto después de cada RenderState(), o cada vez que quieras refrescar el HUD
+    [Header("Doctor Info")]
+    public TMP_Text doctorNameText;
+    public TMP_Text doctorIdText;
+
+    [Header("Action Points")]
+    public Image[] actionPointImages;
+    public Sprite filledAPSprite;
+    public Sprite emptyAPSprite;
+
     public void UpdateHUD()
     {
         if (connection.currentResponse == null || connection.currentResponse.state == null)
@@ -22,9 +30,59 @@ public class HUDController : MonoBehaviour
 
         SimulationState state = connection.currentResponse.state;
 
-        turnoText.text = "Turno: " + state.turn;
-        victimasRescatadasText.text = "Rescatados: " + state.patients_rescued;
-        victimasMuertasText.text = "Muertos: " + state.patients_killed;
-        danoCasaText.text = "Daño casa: " + state.house_damage;
+        UpdateStats(state);
+        UpdateDoctor(state);
+    }
+
+    private void UpdateStats(SimulationState state)
+    {
+        savedText.text = state.patients_rescued + "/7";
+        killedText.text = state.patients_killed + "/4";
+        damageText.text = state.house_damage + "/24";
+        turnText.text = state.turn.ToString();
+    }
+
+    private void UpdateDoctor(SimulationState state)
+    {
+        if (state.doctors == null || state.doctors.Length == 0)
+        {
+            return;
+        }
+
+        DoctorState activeDoctor = null;
+
+        for (int i = 0; i < state.doctors.Length; i++)
+        {
+            if (state.doctors[i].id == state.active_doctor_id)
+            {
+                activeDoctor = state.doctors[i];
+                break;
+            }
+        }
+
+        if (activeDoctor == null)
+        {
+            return;
+        }
+
+        doctorNameText.text = "Doctor Alaric";
+        doctorIdText.text = "ID # " + activeDoctor.id;
+
+        UpdateActionPoints(activeDoctor.action_points);
+    }
+
+    private void UpdateActionPoints(int currentAP)
+    {
+        for (int i = 0; i < actionPointImages.Length; i++)
+        {
+            if (i < currentAP)
+            {
+                actionPointImages[i].sprite = filledAPSprite;
+            }
+            else
+            {
+                actionPointImages[i].sprite = emptyAPSprite;
+            }
+        }
     }
 }
