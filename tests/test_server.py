@@ -54,7 +54,7 @@ class TestServer(unittest.TestCase):
         connection.close()
         return status
 
-    def test_reset_initializes_one_skip_doctor_by_default(self):
+    def test_reset_initializes_four_intelligent_doctors_by_default(self):
         status, response = self.request_json("POST", "/reset", {})
 
         self.assertEqual(status, 200)
@@ -63,7 +63,8 @@ class TestServer(unittest.TestCase):
         })
         self.assertEqual(response["api_version"], "v1")
         self.assertEqual(response["state_version"], 0)
-        self.assertEqual(len(response["state"]["doctors"]), 1)
+        self.assertEqual(response["state"]["strategy"], "intelligent")
+        self.assertEqual(len(response["state"]["doctors"]), 4)
         self.assertEqual(response["state"]["turn"], 0)
         self.assertEqual(response["events"], [])
         self.assertNotIn("null", json.dumps(response))
@@ -73,7 +74,8 @@ class TestServer(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertEqual(response["api_version"], "v1")
-        self.assertEqual(len(response["state"]["doctors"]), 1)
+        self.assertEqual(response["state"]["strategy"], "intelligent")
+        self.assertEqual(len(response["state"]["doctors"]), 4)
 
     def test_step_starts_default_simulation_when_not_reset(self):
         status, response = self.request_json("POST", "/step", {})

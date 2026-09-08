@@ -73,5 +73,6 @@ public class Door : MonoBehaviour
                 transform.rotation = closedRotation;
             }
         }
+
     }
 }

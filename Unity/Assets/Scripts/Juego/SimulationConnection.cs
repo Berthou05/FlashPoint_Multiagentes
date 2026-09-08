@@ -38,7 +38,7 @@ public class SimulationConnection : MonoBehaviour
 
     // Estas tres funciones pueden conectarse directamente a botones de Unity.
     // El servidor decide todas las acciones; Unity solo solicita una fase.
-    public IEnumerator ResetSimulation(string strategy = "skip", int numAgents = 1, int seed = 0)
+    public IEnumerator ResetSimulation(string strategy = "intelligent", int numAgents = 4, int seed = 0)
     {
         ResetRequest reset = new ResetRequest();
         reset.strategy = strategy;
@@ -64,6 +64,11 @@ public class SimulationConnection : MonoBehaviour
         return SendRequest("/step_environment", UnityWebRequest.kHttpVerbPOST, "{}");
     }
 
+    public IEnumerator StepCompleteTurn()
+    {
+        return SendRequest("/step_complete_turn", UnityWebRequest.kHttpVerbPOST, "{}");
+    }
+
   // Wrappers para poder conectar estas acciones directamente a botones de UI
     public void OnClickStepDoctor()
     {
@@ -73,6 +78,11 @@ public class SimulationConnection : MonoBehaviour
     public void OnClickStepEnvironment()
     {
         StartCoroutine(StepEnvironment());
+    }
+
+    public void OnClickStepCompleteTurn()
+    {
+        StartCoroutine(StepCompleteTurn());
     }
 
     public void OnClickReset()
@@ -111,10 +121,25 @@ public class SimulationConnection : MonoBehaviour
             if (currentResponse != null &&
                 currentResponse.state != null)
             {
-                simRenderer.RenderState();
-                hudController.UpdateHUD();
-                activeDoctorCard.UpdateActiveCard();
-                doctorCircles.UpdateDoctorCircles();
+                if (simRenderer != null)
+                {
+                    yield return StartCoroutine(simRenderer.RenderResponse(currentResponse));
+                }
+
+                if (hudController != null)
+                {
+                    hudController.UpdateHUD();
+                }
+
+                if (activeDoctorCard != null)
+                {
+                    activeDoctorCard.UpdateActiveCard();
+                }
+
+                if (doctorCircles != null)
+                {
+                    doctorCircles.UpdateDoctorCircles();
+                }
 
                 Debug.Log("Conectado con Mesa");
 
