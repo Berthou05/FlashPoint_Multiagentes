@@ -17,14 +17,10 @@ class PlagueDoctorAgent(mesa.Agent):
     TARGET_CLAIM_PENALTY = 5
     RESCUE_PATIENT_BENEFIT = 10
 
-    RISK_WEIGHTS = {
-        "new_swarm": 1,
-        "new_king": 2,
-        "structural_damage": 3,
-        "door_destroyed": 1,
-        "poi_destroyed": 5,
-        "patient_killed": 8,
-    }
+    STRUCTURAL_DAMAGE_RISK = 1
+    PATIENT_HIT_RISK = 2
+    MAX_VICTIM_RISK = 10
+    DISTANCE_RISK_PENALTY = 2
 
     ACTION_COSTS = {
         "move": 1,
@@ -235,47 +231,70 @@ class PlagueDoctorAgent(mesa.Agent):
         return tasks
 
     # ==========================================================
-    # Risk evaluation for each posible task
-    # =========================================================
+    # RISK EVALUATION
+    # ==========================================================
 
-    def score_risk_outcome(self, outcome):
-        risk = 0
-        risk += len(outcome["new_swarms"]) * self.RISK_WEIGHTS["new_swarm"]
-        risk += len(outcome["new_kings"]) * self.RISK_WEIGHTS["new_king"]
-        risk += outcome["structural_damage"] * self.RISK_WEIGHTS["structural_damage"]
-        risk += outcome["doors_destroyed"] * self.RISK_WEIGHTS["door_destroyed"]
-        risk += len(outcome["pois_destroyed"]) * self.RISK_WEIGHTS["poi_destroyed"]
-        risk += len(outcome["patients_killed"]) * self.RISK_WEIGHTS["patient_killed"]
-        return risk
+    def score_fire_risk(self, outcome):
+        """Score only structural damage and revealed Patients hit."""
+        return (
+            outcome["structural_damage"] * self.STRUCTURAL_DAMAGE_RISK
+            + len(outcome["patients_hit"]) * self.PATIENT_HIT_RISK
+        )
 
-    def build_risk_map(self):
-        risk_map = {}
-        for x in range(1, self.model.width - 1):
-            for y in range(1, self.model.height - 1):
-                position = (x, y)
-                outcome = self.model.predict_infestation(position)
-                outcome["risk"] = self.score_risk_outcome(outcome)
-                risk_map[position] = outcome
-        return risk_map
+    def get_victim_risk(self, target):
+        """Estimate victim/POI danger from the closest RatKing."""
+        if target.pos is None:
+            return 0
 
-    def get_task_risk(self, task, risk_map):
+        costs = {}
+        queue = []
+
+        for entity in self.model.agents:
+            if isinstance(entity, RatKing) and entity.pos is not None:
+                costs[entity.pos] = 0
+                heapq.heappush(queue, (0, entity.pos))
+
+        while queue:
+            cost, current = heapq.heappop(queue)
+
+            if cost != costs[current]:
+                continue
+
+            if current == target.pos:
+                return max(0, self.MAX_VICTIM_RISK - cost)
+
+            for neighbor in self.model.get_neighbors(current):
+                if not self.model.is_interior_position(neighbor):
+                    continue
+
+                step_cost = self.DISTANCE_RISK_PENALTY
+                boundary = self.model.get_boundary(current, neighbor)
+
+                if isinstance(boundary, Wall) and not boundary.is_destroyed:
+                    step_cost += boundary.MAX_DAMAGE - boundary.damage
+
+                new_cost = cost + step_cost
+
+                if new_cost >= self.MAX_VICTIM_RISK:
+                    continue
+
+                if neighbor not in costs or new_cost < costs[neighbor]:
+                    costs[neighbor] = new_cost
+                    heapq.heappush(queue, (new_cost, neighbor))
+
+        return 0
+
+    def get_task_risk(self, task):
         kind = task["kind"]
         target = task["target"]
 
         if kind in ("treat_rat_swarm", "treat_rat_king"):
-            return risk_map[target.pos]["risk"] if target.pos is not None else 0
+            if target.pos is None:
+                return 0
+            return self.score_fire_risk(self.model.predict_infestation(target.pos))
 
-        if kind in ("rescue", "rescue_carried"):
-            return sum(
-                target.unique_id in outcome["patients_killed"]
-                for outcome in risk_map.values()
-            )
-
-        if kind == "investigate":
-            return sum(
-                target.unique_id in outcome["pois_destroyed"]
-                for outcome in risk_map.values()
-            )
+        if kind in ("rescue", "investigate"):
+            return self.get_victim_risk(target)
 
         return 0
 
@@ -425,7 +444,7 @@ class PlagueDoctorAgent(mesa.Agent):
 
         return claimed_by_others * self.TARGET_CLAIM_PENALTY
 
-    def evaluate_task(self, task, normal_search=None, risk_map=None):
+    def evaluate_task(self, task, normal_search=None):
         """Calculate the plan, cost and risk of one task."""
         kind = task["kind"]
         target = task["target"]
@@ -517,10 +536,7 @@ class PlagueDoctorAgent(mesa.Agent):
         else:
             return None
 
-        if risk_map is None:
-            risk_map = self.build_risk_map()
-
-        risk = self.get_task_risk(task, risk_map)
+        risk = self.get_task_risk(task)
         claim_penalty = self.get_claim_penalty(task)
         search_cost = ap_cost + penalty
         effective_cost = search_cost + claim_penalty
@@ -548,11 +564,10 @@ class PlagueDoctorAgent(mesa.Agent):
             return None
 
         normal_search = None if self.carried_patient is not None else self.dijkstra(self.pos)
-        risk_map = self.build_risk_map()
         evaluated = []
 
         for task in tasks:
-            result = self.evaluate_task(task, normal_search, risk_map)
+            result = self.evaluate_task(task, normal_search)
 
             if result is not None:
                 evaluated.append(result)

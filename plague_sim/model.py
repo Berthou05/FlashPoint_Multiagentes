@@ -493,11 +493,9 @@ class PlagueSimulationModel(Model):
                 self.remove_infestation(entity)
 
     def predict_infestation(self, position):
-        """Predict the damage caused by one infestation roll without changing the real board."""
-
+        """Predict only structural damage and revealed Patients hit by one infestation roll."""
         infestations = {}
         patients = {}
-        pois = {}
 
         for entity in self.agents:
             if isinstance(entity, RatSwarm) and entity.pos is not None:
@@ -506,8 +504,6 @@ class PlagueSimulationModel(Model):
                 infestations[entity.pos] = "king"
             elif isinstance(entity, Patient) and entity.pos is not None:
                 patients.setdefault(entity.pos, set()).add(entity.unique_id)
-            elif isinstance(entity, POI) and entity.pos is not None:
-                pois[entity.pos] = entity.unique_id
 
         boundaries = {}
 
@@ -520,27 +516,13 @@ class PlagueSimulationModel(Model):
             }
 
         outcome = {
-            "new_swarms": set(),
-            "new_kings": set(),
             "structural_damage": 0,
-            "doors_destroyed": 0,
-            "patients_killed": set(),
-            "pois_destroyed": set(),
+            "patients_hit": set(),
         }
 
-        def resolve_king_cell(cell):
-            outcome["patients_killed"].update(patients.pop(cell, set()))
-
-            if cell in pois:
-                outcome["pois_destroyed"].add(pois.pop(cell))
-
         def create_king(cell):
-            if infestations.get(cell) == "swarm":
-                outcome["new_swarms"].discard(cell)
-
             infestations[cell] = "king"
-            outcome["new_kings"].add(cell)
-            resolve_king_cell(cell)
+            outcome["patients_hit"].update(patients.pop(cell, set()))
 
         def can_cross(cell_a, cell_b):
             boundary = boundaries.get(self.edge_key(cell_a, cell_b))
@@ -577,8 +559,6 @@ class PlagueSimulationModel(Model):
             was_open = boundary["open"]
             boundary["destroyed"] = True
             boundary["open"] = True
-            outcome["doors_destroyed"] += 1
-
             return was_open
 
         def outbreak(origin):
@@ -596,11 +576,7 @@ class PlagueSimulationModel(Model):
 
                     infestation = infestations.get(target)
 
-                    if infestation is None:
-                        create_king(target)
-                        break
-
-                    if infestation == "swarm":
+                    if infestation is None or infestation == "swarm":
                         create_king(target)
                         break
 
@@ -610,11 +586,8 @@ class PlagueSimulationModel(Model):
 
         if infestation is None:
             infestations[position] = "swarm"
-            outcome["new_swarms"].add(position)
-
         elif infestation == "swarm":
             create_king(position)
-
         else:
             outbreak(position)
 
@@ -634,10 +607,6 @@ class PlagueSimulationModel(Model):
 
                 create_king(neighbor)
                 king_positions.append(neighbor)
-
-        for cell in list(outcome["new_kings"]):
-            if self.is_exterior_position(cell):
-                outcome["new_kings"].discard(cell)
 
         return outcome
 
