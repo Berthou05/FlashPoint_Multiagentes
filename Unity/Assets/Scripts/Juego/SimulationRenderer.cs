@@ -331,9 +331,10 @@ public class SimulationRenderer : MonoBehaviour
 
                 if (mismasCoordenadas)
                 {
-                    Debug.Log("Puerta encontrada: " +
-                        datos[i].ax + "," + datos[i].ay + " - " +
-                        datos[i].bx + "," + datos[i].by);
+                    doors[j].UpdateDoor(
+                        datos[i].open,
+                        datos[i].destroyed
+                    );
                 }
             }
         }
