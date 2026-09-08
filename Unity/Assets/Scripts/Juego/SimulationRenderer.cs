@@ -49,6 +49,7 @@ public class SimulationRenderer : MonoBehaviour
         RenderPatients(state.patients);
 
         RenderWalls(state.walls); 
+        RenderDoors(state.doors);
     }
 
 
@@ -301,6 +302,42 @@ public class SimulationRenderer : MonoBehaviour
         }
     }
 
+    void RenderDoors(DoorData[] datos)
+    {
+        if (datos == null)
+        {
+            return;
+        }
+
+        GameObject doorsObject = GameObject.Find("Door");
+
+        if (doorsObject == null)
+        {
+            Debug.LogError("No se encontró el objeto Door.");
+            return;
+        }
+
+        Door[] doors = doorsObject.GetComponentsInChildren<Door>(true);
+
+        for (int i = 0; i < datos.Length; i++)
+        {
+            for (int j = 0; j < doors.Length; j++)
+            {
+                bool mismasCoordenadas =
+                    doors[j].ax == datos[i].ax &&
+                    doors[j].ay == datos[i].ay &&
+                    doors[j].bx == datos[i].bx &&
+                    doors[j].by == datos[i].by;
+
+                if (mismasCoordenadas)
+                {
+                    Debug.Log("Puerta encontrada: " +
+                        datos[i].ax + "," + datos[i].ay + " - " +
+                        datos[i].bx + "," + datos[i].by);
+                }
+            }
+        }
+    }
 
     void RemoveMissingDoctors(List<int> idsActuales)
     {
