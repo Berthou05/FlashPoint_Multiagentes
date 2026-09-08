@@ -4618,6 +4618,9 @@ MonoBehaviour:
       walls: []
       doors: []
   simRenderer: {fileID: 735140261}
+  hudController: {fileID: 0}
+  activeDoctorCard: {fileID: 0}
+  doctorCircles: {fileID: 0}
 --- !u!4 &804217573
 Transform:
   m_ObjectHideFlags: 0

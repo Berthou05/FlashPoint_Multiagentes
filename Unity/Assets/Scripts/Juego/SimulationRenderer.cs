@@ -47,7 +47,8 @@ public class SimulationRenderer : MonoBehaviour
         RenderRatKings(state.rat_kings);
         RenderPois(state.pois);
         RenderPatients(state.patients);
-        RenderWalls(state.walls);
+
+        RenderWalls(state.walls); 
     }
 
 

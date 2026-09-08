@@ -1737,7 +1737,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 1207.5, y: 705.5}
+  m_SizeDelta: {x: 548, y: 575}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1735738302
 MonoBehaviour:
@@ -2407,9 +2407,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74b736cec1a7e43b984bd4070946ebf4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationRenderer
-  doctor: {fileID: 0}
-  ratSwarm: {fileID: 0}
-  ratKing: {fileID: 0}
+  doctor: {fileID: 298556473000002564, guid: 38b15a11c531a904bb7890abbfee9c63, type: 3}
+  ratSwarm: {fileID: 207558144170027386, guid: f12b8f650e22ee843a6d24d533fe9c15, type: 3}
+  ratKing: {fileID: 7409125200559508984, guid: 880859a842b29f340a4ffc7de09f04fd, type: 3}
   poi: {fileID: 7824608610870026745, guid: f2bd30e08f2ff4b4c993ac341bbc28f8, type: 3}
   patient: {fileID: 8592138282950378425, guid: 3d4cb3f66aa93fb4ea8c8e98a65baa49, type: 3}
   positionConverter: {fileID: 1961629587}
