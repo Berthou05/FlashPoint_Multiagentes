@@ -11,7 +11,7 @@ model = None
 state_version = 0
 
 
-def create_model(strategy="skip", num_agents=1, seed=None):
+def create_model(strategy="intelligent", num_agents=4, seed=None):
     global model, state_version
     model = PlagueSimulationModel(strategy=strategy, num_agents=num_agents, seed=seed)
     state_version = 0
@@ -138,7 +138,7 @@ class Server(BaseHTTPRequestHandler):
             return
 
         if self.path == "/reset":
-            create_model(data.get("strategy", "skip"), data.get("num_agents", 1), data.get("seed"))
+            create_model(data.get("strategy", "intelligent"), data.get("num_agents", 4), data.get("seed"))
             self._send_game_response()
             return
 
