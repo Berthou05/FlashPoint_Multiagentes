@@ -2542,6 +2542,154 @@ RectTransform:
   m_AnchoredPosition: {x: -100, y: -490}
   m_SizeDelta: {x: 150, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &314598524
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 314598525}
+  - component: {fileID: 314598529}
+  - component: {fileID: 314598528}
+  - component: {fileID: 314598527}
+  - component: {fileID: 314598526}
+  m_Layer: 5
+  m_Name: Hourglass
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &314598525
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 314598524}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 581093161}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: -100, y: 100}
+  m_SizeDelta: {x: 200, y: 200}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &314598526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 314598524}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caf0ef8c22cbe23408190042de1d5165, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HourglassToggleButton
+  simulationManager: {fileID: 1411169039}
+  hourglassTransform: {fileID: 314598525}
+  rotationDuration: 0.25
+--- !u!114 &314598527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 314598524}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 314598528}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 314598526}
+        m_TargetAssemblyTypeName: HourglassToggleButton, Assembly-CSharp
+        m_MethodName: OnClickToggle
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &314598528
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 314598524}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 30002979ccad3ad4381981ef58d41b69, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &314598529
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 314598524}
+  m_CullTransparentMesh: 1
 --- !u!1 &335605063
 GameObject:
   m_ObjectHideFlags: 0
@@ -4413,6 +4561,7 @@ RectTransform:
   - {fileID: 679086390}
   - {fileID: 648290347}
   - {fileID: 607268468}
+  - {fileID: 314598525}
   m_Father: {fileID: 1796127302}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -5090,7 +5239,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ActiveDoctorCardController
   connection: {fileID: 1411169034}
   idText: {fileID: 1548050914}
-  apText: {fileID: 0}
+  actionPointImages:
+  - {fileID: 1822678308}
+  - {fileID: 100866079}
+  - {fileID: 82834500}
+  - {fileID: 1978909850}
+  - {fileID: 805630016}
+  - {fileID: 1115165381}
+  - {fileID: 1429506878}
+  - {fileID: 2067251389}
 --- !u!224 &648290347
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5844,6 +6001,7 @@ Transform:
   - {fileID: 761049285}
   - {fileID: 873527886}
   - {fileID: 1706757239}
+  - {fileID: 1411169038}
   m_Father: {fileID: 1796127302}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &746431338
@@ -11224,6 +11382,7 @@ GameObject:
   - component: {fileID: 1411169036}
   - component: {fileID: 1411169035}
   - component: {fileID: 1411169037}
+  - component: {fileID: 1411169039}
   m_Layer: 0
   m_Name: SimulationManager
   m_TagString: Untagged
@@ -11324,12 +11483,26 @@ Transform:
   m_GameObject: {fileID: 1411169033}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 31.98766, y: -18.610369, z: -93.6995}
+  m_LocalPosition: {x: 31.98767, y: -18.610382, z: -93.6995}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1796127302}
+  m_Father: {fileID: 721315887}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1411169039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1411169033}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0b0f618004bb8a448bc24a24f1b917d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimulationManager
+  connection: {fileID: 761049286}
+  delayBetweenSteps: 1
 --- !u!1 &1419075458
 GameObject:
   m_ObjectHideFlags: 0
@@ -13076,15 +13249,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HUDController
   connection: {fileID: 1411169034}
-  victimasRescatadasText: {fileID: 1726575565}
-  victimasMuertasText: {fileID: 1794405014}
-  danoCasaText: {fileID: 992265394}
-  turnoText: {fileID: 297778375}
-  doctorNameText: {fileID: 0}
-  doctorIdText: {fileID: 0}
-  actionPointImages: []
-  filledAPSprite: {fileID: 0}
-  emptyAPSprite: {fileID: 0}
+  victimasRescatadasText: {fileID: 2071314873}
+  victimasMuertasText: {fileID: 113358595}
+  danoCasaText: {fileID: 635870918}
+  turnoText: {fileID: 1906256701}
 --- !u!1 &1713794787
 GameObject:
   m_ObjectHideFlags: 0
@@ -13805,7 +13973,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1411169038}
   - {fileID: 581093161}
   - {fileID: 721315887}
   m_Father: {fileID: 0}

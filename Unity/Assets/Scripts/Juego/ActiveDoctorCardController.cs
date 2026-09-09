@@ -1,12 +1,13 @@
 // ActiveDoctorCardController.cs — la única card grande, siempre visible
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class ActiveDoctorCardController : MonoBehaviour
 {
     public SimulationConnection connection;
     public TMP_Text idText;
-    public TMP_Text apText;
+    public Image[] actionPointImages;
 
     public void UpdateActiveCard()
     {
@@ -22,10 +23,36 @@ public class ActiveDoctorCardController : MonoBehaviour
         {
             if (state.doctors[i].id == state.active_doctor_id)
             {
-                idText.text = "Doctor " + state.doctors[i].id;
-                apText.text = "AP: " + state.doctors[i].action_points;
+                if (idText != null)
+                {
+                    idText.text = "Doctor " + state.doctors[i].id;
+                }
+
+                UpdateActionPoints(state.doctors[i].action_points);
+
                 return;
             }
+        }
+    }
+
+    private void UpdateActionPoints(int currentAP)
+    {
+        if (actionPointImages == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < actionPointImages.Length; i++)
+        {
+            if (actionPointImages[i] == null)
+            {
+                continue;
+            }
+
+            actionPointImages[i].gameObject.SetActive(true);
+            actionPointImages[i].color = i < currentAP
+                ? Color.white
+                : new Color(1f, 1f, 1f, 0.25f);
         }
     }
 }

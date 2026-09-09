@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 public class HUDController : MonoBehaviour
@@ -13,15 +12,6 @@ public class HUDController : MonoBehaviour
     public TMP_Text danoCasaText;
     public TMP_Text turnoText;
 
-    [Header("Doctor Info")]
-    public TMP_Text doctorNameText;
-    public TMP_Text doctorIdText;
-
-    [Header("Action Points")]
-    public Image[] actionPointImages;
-    public Sprite filledAPSprite;
-    public Sprite emptyAPSprite;
-
     public void UpdateHUD()
     {
         if (connection.currentResponse == null || connection.currentResponse.state == null)
@@ -32,7 +22,6 @@ public class HUDController : MonoBehaviour
         SimulationState state = connection.currentResponse.state;
 
         UpdateStats(state);
-        UpdateDoctor(state);
     }
 
     private void UpdateStats(SimulationState state)
@@ -58,57 +47,4 @@ public class HUDController : MonoBehaviour
         }
     }
 
-    private void UpdateDoctor(SimulationState state)
-    {
-        if (state.doctors == null || state.doctors.Length == 0)
-        {
-            return;
-        }
-
-        DoctorData activeDoctor = null;
-
-        for (int i = 0; i < state.doctors.Length; i++)
-        {
-            if (state.doctors[i].id == state.active_doctor_id)
-            {
-                activeDoctor = state.doctors[i];
-                break;
-            }
-        }
-
-        if (activeDoctor == null)
-        {
-            return;
-        }
-
-        if (doctorNameText != null)
-        {
-            doctorNameText.text = "Doctor Alaric";
-        }
-
-        if (doctorIdText != null)
-        {
-            doctorIdText.text = "ID # " + activeDoctor.id;
-        }
-
-        if (actionPointImages != null)
-        {
-            UpdateActionPoints(activeDoctor.action_points);
-        }
-    }
-
-    private void UpdateActionPoints(int currentAP)
-    {
-        for (int i = 0; i < actionPointImages.Length; i++)
-        {
-            if (i < currentAP)
-            {
-                actionPointImages[i].sprite = filledAPSprite;
-            }
-            else
-            {
-                actionPointImages[i].sprite = emptyAPSprite;
-            }
-        }
-    }
 }
