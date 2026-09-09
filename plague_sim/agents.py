@@ -16,7 +16,7 @@ class PlagueDoctorAgent(mesa.Agent):
     WALL_BREAK_PENALTY = 4
     TARGET_CLAIM_PENALTY = 0
     RESCUE_BONUS = 6
-    CONTROLLED_RAT_KING_LIMIT = 2
+    CONTROLLED_RAT_KING_LIMIT = 4
 
     ACTION_COSTS = {
         "move": 1,
@@ -209,7 +209,14 @@ class PlagueDoctorAgent(mesa.Agent):
     def get_tasks(self):
         """Return every currently relevant objective visible to the Doctor."""
         if self.carried_patient is not None:
-            return [{"kind": "rescue_carried", "target": self.carried_patient}]
+            tasks = [{"kind": "rescue_carried", "target": self.carried_patient}]
+
+            for position in self.model.get_neighbors(self.pos):
+                rat_king = self.model.get_entity(position, RatKing)
+                if rat_king is not None and self.model.can_cross(self.pos, position):
+                    tasks.append({"kind": "treat_rat_king", "target": rat_king})
+
+            return tasks
 
         tasks = []
 
@@ -351,8 +358,8 @@ class PlagueDoctorAgent(mesa.Agent):
         return rat_kings <= self.CONTROLLED_RAT_KING_LIMIT
 
     def get_task_bonus(self, kind):
-        """Favor rescuing a revealed Patient while infestation is controlled."""
-        if kind == "rescue" and self.board_is_controlled():
+        """Favor reaching an exit with a revealed or carried Patient."""
+        if kind in ("rescue", "rescue_carried") and self.board_is_controlled():
             return self.RESCUE_BONUS
         return 0
 
@@ -427,6 +434,7 @@ class PlagueDoctorAgent(mesa.Agent):
             search_cost = search["scores"][best_exit]
             ap_cost = search["ap_costs"][best_exit]
             penalty = search["penalties"][best_exit]
+            plan_ap_cost = ap_cost
 
         elif kind == "rescue":
             if target.pos is None:
@@ -453,6 +461,7 @@ class PlagueDoctorAgent(mesa.Agent):
             # Execute only the route to the Patient now. Once picked up,
             # the next intelligent step recalculates the carrying route.
             plan = to_patient_plan + [("pick_up_patient", target)]
+            plan_ap_cost = search["ap_costs"][target.pos]
 
         elif kind == "investigate":
             if target.pos is None:
@@ -466,6 +475,7 @@ class PlagueDoctorAgent(mesa.Agent):
             ap_cost = search["ap_costs"][target.pos]
             penalty = search["penalties"][target.pos]
             plan = self.reconstruct_plan(search, target.pos)
+            plan_ap_cost = ap_cost
 
             if not plan:
                 return None
@@ -505,6 +515,7 @@ class PlagueDoctorAgent(mesa.Agent):
             ap_cost = best["ap"]
             penalty = best["penalty"]
             plan = best["plan"]
+            plan_ap_cost = ap_cost
 
         else:
             return None
@@ -520,6 +531,7 @@ class PlagueDoctorAgent(mesa.Agent):
             "wall_penalty": penalty,
             "claim_penalty": claim_penalty,
             "task_bonus": task_bonus,
+            "plan_ap_cost": plan_ap_cost,
             "effective_cost": effective_cost,
             "utility": -effective_cost,
             "plan": plan,
@@ -583,6 +595,10 @@ class PlagueDoctorAgent(mesa.Agent):
 
         self.current_task = evaluated
         action = evaluated["plan"][0]
+
+        if evaluated["plan_ap_cost"] > self.action_points and self.action_points <= 4:
+            self.end_turn()
+            return False
 
         # If the next planned action is currently too expensive,
         # keep the target reserved and continue it next turn.
