@@ -3,7 +3,12 @@ guid: 2f94ed817285c49bda083f7e0fd43118
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_pantry
+    second: {fileID: 2100000, guid: ca0d05993dd1b4558b088cc81ad49834, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
