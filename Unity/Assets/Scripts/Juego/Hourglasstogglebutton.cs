@@ -23,14 +23,36 @@ public class HourglassToggleButton : MonoBehaviour
     {
         if (simulationManager.isPlaying)
         {
-            simulationManager.OnClickStopAutoPlay();
-            GirarHacia(AnguloHorizontal);
+            Pause();
         }
         else
         {
-            simulationManager.OnClickStartAutoPlay();
-            GirarHacia(AnguloVertical);
+            Resume();
         }
+    }
+
+    // Detiene la simulación y muestra el reloj en posición de pausa.
+    public void Pause()
+    {
+        if (!simulationManager.isPlaying)
+        {
+            return;
+        }
+
+        simulationManager.OnClickStopAutoPlay();
+        GirarHacia(AnguloHorizontal);
+    }
+
+    // Reanuda la simulación y muestra el reloj en posición vertical.
+    public void Resume()
+    {
+        if (simulationManager.isPlaying)
+        {
+            return;
+        }
+
+        simulationManager.OnClickStartAutoPlay();
+        GirarHacia(AnguloVertical);
     }
 
     private void GirarHacia(float anguloDestino)
@@ -50,7 +72,7 @@ public class HourglassToggleButton : MonoBehaviour
 
         while (elapsed < rotationDuration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float anguloActual = Mathf.LerpAngle(
                 anguloInicial,
                 anguloDestino,

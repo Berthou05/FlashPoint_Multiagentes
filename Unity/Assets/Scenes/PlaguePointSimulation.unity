@@ -17151,6 +17151,7 @@ GameObject:
   - component: {fileID: 1677991025}
   - component: {fileID: 1677991024}
   - component: {fileID: 1677991023}
+  - component: {fileID: 1987654321}
   m_Layer: 5
   m_Name: Menu
   m_TagString: Untagged
@@ -17220,7 +17221,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1677991024}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1987654321}
+        m_TargetAssemblyTypeName: MenuPanelController, Assembly-CSharp
+        m_MethodName: OnClickMenu
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument:
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1677991024
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17259,6 +17272,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1677991021}
   m_CullTransparentMesh: 1
+--- !u!114 &1987654321
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1677991021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d6a2f3e4b5c6789d0e1f2a3b4c5d6e7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MenuPanelController
+  menuPanel: {fileID: 162979620}
+  menuCard: {fileID: 1430796622}
+  hourglassButton: {fileID: 314598526}
+  slideDuration: 0.35
 --- !u!1 &1678924642
 GameObject:
   m_ObjectHideFlags: 0
