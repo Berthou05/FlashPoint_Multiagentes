@@ -7,10 +7,11 @@ public class HUDController : MonoBehaviour
     public SimulationConnection connection;
 
     [Header("Global Stats")]
-    public TMP_Text savedText;
-    public TMP_Text killedText;
-    public TMP_Text damageText;
-    public TMP_Text turnText;
+    // Estos nombres coinciden con las referencias guardadas en la escena.
+    public TMP_Text victimasRescatadasText;
+    public TMP_Text victimasMuertasText;
+    public TMP_Text danoCasaText;
+    public TMP_Text turnoText;
 
     [Header("Doctor Info")]
     public TMP_Text doctorNameText;
@@ -36,10 +37,25 @@ public class HUDController : MonoBehaviour
 
     private void UpdateStats(SimulationState state)
     {
-        savedText.text = state.patients_rescued + "/7";
-        killedText.text = state.patients_killed + "/4";
-        damageText.text = state.house_damage + "/24";
-        turnText.text = state.turn.ToString();
+        if (victimasRescatadasText != null)
+        {
+            victimasRescatadasText.text = state.patients_rescued + "/7";
+        }
+
+        if (victimasMuertasText != null)
+        {
+            victimasMuertasText.text = state.patients_killed + "/4";
+        }
+
+        if (danoCasaText != null)
+        {
+            danoCasaText.text = state.house_damage + "/24";
+        }
+
+        if (turnoText != null)
+        {
+            turnoText.text = state.turn.ToString();
+        }
     }
 
     private void UpdateDoctor(SimulationState state)
@@ -49,7 +65,7 @@ public class HUDController : MonoBehaviour
             return;
         }
 
-        DoctorState activeDoctor = null;
+        DoctorData activeDoctor = null;
 
         for (int i = 0; i < state.doctors.Length; i++)
         {
@@ -65,10 +81,20 @@ public class HUDController : MonoBehaviour
             return;
         }
 
-        doctorNameText.text = "Doctor Alaric";
-        doctorIdText.text = "ID # " + activeDoctor.id;
+        if (doctorNameText != null)
+        {
+            doctorNameText.text = "Doctor Alaric";
+        }
 
-        UpdateActionPoints(activeDoctor.action_points);
+        if (doctorIdText != null)
+        {
+            doctorIdText.text = "ID # " + activeDoctor.id;
+        }
+
+        if (actionPointImages != null)
+        {
+            UpdateActionPoints(activeDoctor.action_points);
+        }
     }
 
     private void UpdateActionPoints(int currentAP)

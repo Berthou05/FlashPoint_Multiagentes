@@ -18,7 +18,6 @@ public class SimulationConnection : MonoBehaviour
     // Referencias nuevas para la UI
     public HUDController hudController;
     public ActiveDoctorCardController activeDoctorCard;
-    public DoctorCirclesController doctorCircles;
 
 
 
@@ -134,11 +133,6 @@ public class SimulationConnection : MonoBehaviour
                 if (activeDoctorCard != null)
                 {
                     activeDoctorCard.UpdateActiveCard();
-                }
-
-                if (doctorCircles != null)
-                {
-                    doctorCircles.UpdateDoctorCircles();
                 }
 
                 Debug.Log("Conectado con Mesa");
