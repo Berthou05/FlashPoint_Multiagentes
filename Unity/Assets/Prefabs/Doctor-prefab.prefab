@@ -122,12 +122,24 @@ PrefabInstance:
     m_TransformParent: {fileID: 8022366601174644043}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
       propertyPath: m_LocalPosition.z
@@ -164,6 +176,22 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
       propertyPath: m_Name
       value: CHUMA
+      objectReference: {fileID: 0}
+    - target: {fileID: 3501836223160941379, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: fe85e69754f4d4e438e4a60f7dfb7210, type: 2}
+    - target: {fileID: 5866666021909216657, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 664e4a54f6fdebe46b6cd324234fa764, type: 2}
+    - target: {fileID: 5866666021909216657, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: m_CullingMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: a546232324cd04a7a9a2631ce95a8f23, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
