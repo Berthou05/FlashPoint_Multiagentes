@@ -25,13 +25,41 @@ public class ActiveDoctorCardController : MonoBehaviour
             {
                 if (idText != null)
                 {
-                    idText.text = "Doctor " + state.doctors[i].id;
+                    idText.text = "ID # " + state.doctors[i].id;
                 }
 
                 UpdateActionPoints(state.doctors[i].action_points);
 
                 return;
             }
+        }
+    }
+
+    // Actualiza la card mientras Unity reproduce los eventos de un turno.
+    public void UpdateFromEvent(SimulationEvent simulationEvent)
+    {
+        if (simulationEvent == null)
+        {
+            return;
+        }
+
+        if (simulationEvent.type == "doctor_turn_started")
+        {
+            if (idText != null)
+            {
+                idText.text = "ID # " + simulationEvent.id;
+            }
+
+            UpdateActionPoints(simulationEvent.action_points);
+        }
+        else if (simulationEvent.type == "doctor_action_completed")
+        {
+            if (idText != null)
+            {
+                idText.text = "ID # " + simulationEvent.doctor_id;
+            }
+
+            UpdateActionPoints(simulationEvent.action_points_after);
         }
     }
 
@@ -48,11 +76,7 @@ public class ActiveDoctorCardController : MonoBehaviour
             {
                 continue;
             }
-
-            actionPointImages[i].gameObject.SetActive(true);
-            actionPointImages[i].color = i < currentAP
-                ? Color.white
-                : new Color(1f, 1f, 1f, 0.25f);
+            actionPointImages[i].gameObject.SetActive(i < currentAP);
         }
     }
 }

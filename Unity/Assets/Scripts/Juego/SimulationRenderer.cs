@@ -20,6 +20,9 @@ public class SimulationRenderer : MonoBehaviour
     // Duración visual de cada evento doctor_moved que llega del servidor.
     public float doctorMoveDuration = 0.35f;
 
+    // Tiempo mínimo para que la card muestre los AP después de cada acción.
+    public float actionPointDisplayDuration = 0.15f;
+
     // Aquí guardamos los objetos que ya existen en Unity.
     // El número es el ID que manda Mesa.
     private Dictionary<int, GameObject> doctors = new Dictionary<int, GameObject>();
@@ -48,7 +51,10 @@ public class SimulationRenderer : MonoBehaviour
     }
 
     // Reproduce los movimientos antes de aplicar el estado final del servidor.
-    public IEnumerator RenderResponse(SimulationResponse response)
+    public IEnumerator RenderResponse(
+        SimulationResponse response,
+        ActiveDoctorCardController activeDoctorCard
+    )
     {
         if (response == null || response.state == null)
         {
@@ -74,6 +80,17 @@ public class SimulationRenderer : MonoBehaviour
                             simulationEvent.to_y
                         ));
                     }
+                }
+
+                if (activeDoctorCard != null)
+                {
+                    activeDoctorCard.UpdateFromEvent(simulationEvent);
+                }
+
+                if (simulationEvent.type == "doctor_action_completed" &&
+                    actionPointDisplayDuration > 0f)
+                {
+                    yield return new WaitForSeconds(actionPointDisplayDuration);
                 }
             }
         }
