@@ -113,8 +113,20 @@ public class SimulationRenderer : MonoBehaviour
 
     IEnumerator MoveDoctor(GameObject doctorObject, int x, int y)
     {
+        Animator animator = doctorObject.GetComponentInChildren<Animator>();
+
         Vector3 initialPosition = doctorObject.transform.position;
         Vector3 finalPosition = positionConverter.ConvertToUnityPosition(x, y);
+
+        // Calculate movement direction before moving
+        Vector3 direction = finalPosition - initialPosition;
+        direction.y = 0f;
+
+        // Face the movement direction before starting
+        if (direction.sqrMagnitude > 0.001f)
+        {
+            doctorObject.transform.rotation = Quaternion.LookRotation(direction);
+        }
 
         if (doctorMoveDuration <= 0f)
         {
@@ -122,20 +134,31 @@ public class SimulationRenderer : MonoBehaviour
             yield break;
         }
 
+        // Start walking animation before movement
+        animator.SetBool("IsWalking", true);
+        animator.Play("Base Layer.Armature|Walk_Formal_Loop", 0, 0f);
+
+
         float elapsed = 0f;
 
         while (elapsed < doctorMoveDuration)
         {
             elapsed += Time.deltaTime;
+
+            float t = Mathf.Clamp01(elapsed / doctorMoveDuration);
+
             doctorObject.transform.position = Vector3.Lerp(
                 initialPosition,
                 finalPosition,
-                elapsed / doctorMoveDuration
+                t
             );
+
             yield return null;
         }
 
         doctorObject.transform.position = finalPosition;
+
+        animator.SetBool("IsWalking", false);
     }
 
 

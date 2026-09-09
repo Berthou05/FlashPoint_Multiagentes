@@ -23984,7 +23984,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationRenderer
   doctor: {fileID: 298556473000002564, guid: 38b15a11c531a904bb7890abbfee9c63, type: 3}
-  ratSwarm: {fileID: 207558144170027386, guid: f12b8f650e22ee843a6d24d533fe9c15, type: 3}
+  ratSwarm: {fileID: 207558144170027386, guid: 3075511b50be38443977f62e64b5b8ab, type: 3}
   ratKing: {fileID: 7409125200559508984, guid: 880859a842b29f340a4ffc7de09f04fd, type: 3}
   poi: {fileID: 7824608610870026745, guid: f2bd30e08f2ff4b4c993ac341bbc28f8, type: 3}
   patient: {fileID: 8592138282950378425, guid: 3d4cb3f66aa93fb4ea8c8e98a65baa49, type: 3}
