@@ -792,10 +792,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 285.625, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &82834499
 MonoBehaviour:
@@ -927,10 +927,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 253.375, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &100866078
 MonoBehaviour:
@@ -5238,6 +5238,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActiveDoctorCardController
   connection: {fileID: 761049286}
+  nameText: {fileID: 1368983956}
   idText: {fileID: 1548050914}
   actionPointImages:
   - {fileID: 1822678308}
@@ -6272,10 +6273,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 350.125, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &805630015
 MonoBehaviour:
@@ -8880,10 +8881,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 382.375, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1115165380
 MonoBehaviour:
@@ -11409,6 +11410,7 @@ MonoBehaviour:
   positionConverter: {fileID: 1411169036}
   connection: {fileID: 761049286}
   doctorMoveDuration: 0.35
+  actionPointDisplayDuration: 0.15
 --- !u!114 &1411169036
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11664,10 +11666,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 414.625, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1429506877
 MonoBehaviour:
@@ -12133,7 +12135,6 @@ GameObject:
   - component: {fileID: 1498888049}
   - component: {fileID: 1498888052}
   - component: {fileID: 1498888051}
-  - component: {fileID: 1498888050}
   m_Layer: 5
   m_Name: ActionPoints
   m_TagString: Untagged
@@ -12168,32 +12169,6 @@ RectTransform:
   m_AnchoredPosition: {x: 2, y: -3}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1498888050
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1498888048}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
-  m_Padding:
-    m_Left: 200
-    m_Right: 32
-    m_Top: 138
-    m_Bottom: 35
-  m_ChildAlignment: 5
-  m_Spacing: -10
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 1
-  m_ChildControlHeight: 1
-  m_ChildScaleWidth: 1
-  m_ChildScaleHeight: 1
-  m_ReverseArrangement: 0
 --- !u!114 &1498888051
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14083,10 +14058,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 221.125, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1822678307
 MonoBehaviour:
@@ -15643,10 +15618,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 317.875, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1978909849
 MonoBehaviour:
@@ -16476,10 +16451,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1498888049}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 446.875, y: -161.5}
+  m_SizeDelta: {x: 42.25, y: 47}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2067251388
 MonoBehaviour:
