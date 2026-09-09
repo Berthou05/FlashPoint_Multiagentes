@@ -137,43 +137,36 @@ class PlagueDoctorAgent(mesa.Agent):
             poi = self.model.get_entity(target, POI)
             if poi is not None:
                 self.model.reveal_poi(poi)
-            return True
 
-        if kind == "open_door":
+        elif kind == "open_door":
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.get_boundary(self.pos, target).open()
             self.model.emit_event("door_opened", id=self.model.get_boundary_id(self.pos, target))
-            return True
 
-        if kind == "close_door":
+        elif kind == "close_door":
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.get_boundary(self.pos, target).close()
             self.model.emit_event("door_closed", id=self.model.get_boundary_id(self.pos, target))
-            return True
 
-        if kind == "damage_wall":
+        elif kind == "damage_wall":
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.damage_boundary(self.pos, target)
-            return True
 
-        if kind == "reduce_rat_king":
+        elif kind == "reduce_rat_king":
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.demote_rat_king(target)
-            return True
 
-        if kind in ("treat_rat_swarm", "treat_rat_king"):
+        elif kind in ("treat_rat_swarm", "treat_rat_king"):
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.remove_infestation(target)
-            return True
 
-        if kind == "pick_up_patient":
+        elif kind == "pick_up_patient":
             self.spend_ap(self.ACTION_COSTS[kind])
             self.model.grid.remove_agent(target)
             self.carried_patient = target
             self.model.emit_event("patient_picked_up", id=target.unique_id)
-            return True
 
-        if kind == "drop_patient":
+        elif kind == "drop_patient":
             self.spend_ap(self.ACTION_COSTS[kind])
             patient = self.carried_patient
             if self.model.is_exterior_position(self.pos):
@@ -182,9 +175,16 @@ class PlagueDoctorAgent(mesa.Agent):
                 self.model.grid.place_agent(patient, self.pos)
                 self.carried_patient = None
                 self.model.emit_event("patient_dropped", id=patient.unique_id, x=self.pos[0], y=self.pos[1])
-            return True
 
-        return False
+        else:
+            return False
+
+        self.model.emit_event(
+            "doctor_action_completed",
+            doctor_id=self.unique_id,
+            action_points_after=self.action_points,
+        )
+        return True
 
     # ==========================================================
     # RANDOM STRATEGY
