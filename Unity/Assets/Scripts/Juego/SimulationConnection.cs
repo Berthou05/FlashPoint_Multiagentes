@@ -122,7 +122,9 @@ public class SimulationConnection : MonoBehaviour
             {
                 if (simRenderer != null)
                 {
-                    yield return StartCoroutine(simRenderer.RenderResponse(currentResponse));
+                    yield return StartCoroutine(
+                        simRenderer.RenderResponse(currentResponse, activeDoctorCard)
+                    );
                 }
 
                 if (hudController != null)

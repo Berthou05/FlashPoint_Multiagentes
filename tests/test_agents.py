@@ -185,6 +185,20 @@ class TestPlagueDoctorActions(unittest.TestCase):
         self.assertTrue(door.is_open)
         self.assertEqual(self.doctor.action_points, 3)
 
+    def test_action_event_reports_remaining_action_points(self):
+        self.model.grid.move_agent(self.doctor, (4, 5))
+        self.doctor.start_turn()
+        self.model.events = []
+
+        self.assertTrue(self.action("open_door", (4, 4)))
+
+        self.assertEqual(self.model.events[-1], {
+            "sequence": 2,
+            "type": "doctor_action_completed",
+            "doctor_id": self.doctor.unique_id,
+            "action_points_after": 3,
+        })
+
     def test_random_model_completes_a_turn_without_progress_error(self):
         random_model = PlagueSimulationModel(strategy="random", seed=7)
 
