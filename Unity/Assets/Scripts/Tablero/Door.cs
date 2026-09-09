@@ -10,11 +10,20 @@ public class Door : MonoBehaviour
     public bool isOpen;
     public bool isDestroyed;
 
+    public Transform hinge;
+    public MeshRenderer doorRenderer;
+
+    public Material normal;
+    public Material destroyed;
+
     private Quaternion closedRotation;
+    private BoxCollider boxCollider;
 
     void Awake()
     {
-        closedRotation = transform.rotation;
+        boxCollider = GetComponent<BoxCollider>();
+
+        closedRotation = hinge.localRotation;
 
         AssignCoordinates();
     }
@@ -24,7 +33,6 @@ public class Door : MonoBehaviour
         float x = transform.position.x;
         float z = transform.position.z;
 
-        // Puerta horizontal
         if (transform.lossyScale.x > transform.lossyScale.z)
         {
             int cellX = Mathf.RoundToInt(x / 4f) + 1;
@@ -36,8 +44,6 @@ public class Door : MonoBehaviour
             bx = cellX;
             by = cellY + 1;
         }
-
-        // Puerta vertical
         else
         {
             int cellX = Mathf.RoundToInt((x + 2f) / 4f);
@@ -51,28 +57,36 @@ public class Door : MonoBehaviour
         }
     }
 
-    public void UpdateDoor(bool open, bool destroyed)
+    public void UpdateDoor(bool open, bool destroyedState)
     {
         isOpen = open;
-        isDestroyed = destroyed;
+        isDestroyed = destroyedState;
 
         if (isDestroyed)
         {
-            gameObject.SetActive(false);
+            doorRenderer.material = destroyed;
+
+            hinge.localRotation = closedRotation;
+
+            boxCollider.enabled = false;
         }
         else
         {
-            gameObject.SetActive(true);
+            doorRenderer.material = normal;
 
             if (isOpen)
             {
-                transform.rotation = closedRotation * Quaternion.Euler(0f, 90f, 0f);
+                hinge.localRotation =
+                    closedRotation * Quaternion.Euler(0f, 90f, 0f);
+
+                boxCollider.enabled = false;
             }
             else
             {
-                transform.rotation = closedRotation;
+                hinge.localRotation = closedRotation;
+
+                boxCollider.enabled = true;
             }
         }
-
     }
 }

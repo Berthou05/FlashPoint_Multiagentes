@@ -83,6 +83,9 @@ public class SimulationEvent
     // ID de la entidad relacionada con el evento
     public int id;
 
+    // Doctor que realizó la acción cuando el evento lo requiere
+    public int doctor_id;
+
     // Algunos eventos pueden involucrar una segunda entidad
     public int other_id;
 
@@ -104,6 +107,7 @@ public class SimulationEvent
 
     // Datos adicionales que pueden cambiar durante un evento
     public int action_points;
+    public int action_points_after;
     public int damage;
 }
 
