@@ -155,6 +155,44 @@ class TestPlagueDoctorActions(unittest.TestCase):
 
         self.assertNotIn(("drop_patient", None), actions)
 
+    def test_intelligent_doctor_carrying_patient_only_considers_nearby_rat_kings(self):
+        self.doctor.strategy = "intelligent"
+        self.model.grid.move_agent(self.doctor, (1, 1))
+        patient = self.model.create_patient((1, 1))
+        self.doctor.start_turn()
+        self.assertTrue(self.action("pick_up_patient", patient))
+
+        rat_king = self.model.create_rat_king((1, 2))
+        swarm = self.model.create_rat_swarm((2, 1))
+
+        tasks = self.doctor.get_tasks()
+
+        self.assertEqual(
+            {(task["kind"], task["target"]) for task in tasks},
+            {
+                ("rescue_carried", patient),
+                ("treat_rat_king", rat_king),
+            },
+        )
+        self.assertNotIn(
+            ("treat_rat_swarm", swarm),
+            {(task["kind"], task["target"]) for task in tasks},
+        )
+
+    def test_intelligent_doctor_saves_four_action_points_for_an_unfinished_rescue(self):
+        self.doctor.strategy = "intelligent"
+        self.model.grid.move_agent(self.doctor, (1, 1))
+        patient = self.model.create_patient((8, 6))
+        self.doctor.action_points = 4
+        self.doctor.current_task = {"kind": "rescue", "target": patient}
+        self.doctor.recalculate_task = False
+
+        self.assertFalse(self.doctor.step_intelligent())
+
+        self.assertTrue(self.doctor.turn_completed)
+        self.assertEqual(self.doctor.action_points, 4)
+        self.assertEqual(self.doctor.pos, (1, 1))
+
     def test_skip_step_reports_turn_end(self):
         self.doctor.strategy = "skip"
 

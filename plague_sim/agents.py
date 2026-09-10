@@ -14,7 +14,9 @@ class PlagueDoctorAgent(mesa.Agent):
 
     MAX_ACTION_POINTS = 8
     WALL_BREAK_PENALTY = 4
-    TARGET_CLAIM_PENALTY = 5
+    TARGET_CLAIM_PENALTY = 0
+    RESCUE_BONUS = 6
+    CONTROLLED_RAT_KING_LIMIT = 4
 
     ACTION_COSTS = {
         "move": 1,
@@ -89,9 +91,11 @@ class PlagueDoctorAgent(mesa.Agent):
         treatment_positions = [self.pos] + [target for target in neighbors if self.model.can_cross(self.pos, target)]
         for position in treatment_positions:
             infestation = self.model.get_entity(position, (RatSwarm, RatKing))
-            if infestation is not None:
-                kind = "treat_rat_swarm" if isinstance(infestation, RatSwarm) else "treat_rat_king"
-                actions.append((kind, infestation))
+            if isinstance(infestation, RatSwarm):
+                actions.append(("treat_rat_swarm", infestation))
+            elif isinstance(infestation, RatKing):
+                actions.append(("reduce_rat_king", infestation))
+                actions.append(("treat_rat_king", infestation))
 
         if self.carried_patient is None:
             for patient in self.model.grid.get_cell_list_contents([self.pos]):
@@ -205,7 +209,14 @@ class PlagueDoctorAgent(mesa.Agent):
     def get_tasks(self):
         """Return every currently relevant objective visible to the Doctor."""
         if self.carried_patient is not None:
-            return [{"kind": "rescue_carried", "target": self.carried_patient}]
+            tasks = [{"kind": "rescue_carried", "target": self.carried_patient}]
+
+            for position in self.model.get_neighbors(self.pos):
+                rat_king = self.model.get_entity(position, RatKing)
+                if rat_king is not None and self.model.can_cross(self.pos, position):
+                    tasks.append({"kind": "treat_rat_king", "target": rat_king})
+
+            return tasks
 
         tasks = []
 
@@ -224,31 +235,39 @@ class PlagueDoctorAgent(mesa.Agent):
 
         return tasks
 
-    def get_path_transition(self, current, target, carrying=False):
-        """Return Dijkstra cost and actions needed to cross one neighboring edge."""
+    def get_path_transition(self, current, target, carrying=False, cleared_edges=None):
+        """Return Dijkstra cost and actions needed to safely cross one neighboring edge."""
         if not self.model.are_neighbors(current, target):
             return None
 
+        cleared_edges = cleared_edges or set()
         actions = []
         ap_cost = 0
         penalty = 0
         move_cost = self.ACTION_COSTS["move_carrying_patient" if carrying else "move"]
         boundary = self.model.get_boundary(current, target)
+        edge = self.model.edge_key(current, target)
 
-        if isinstance(boundary, Door) and not boundary.is_passable:
-            actions.append(("open_door", target))
-            ap_cost += self.ACTION_COSTS["open_door"]
+        if edge not in cleared_edges:
+            if isinstance(boundary, Door) and not boundary.is_passable:
+                actions.append(("open_door", target))
+                ap_cost += self.ACTION_COSTS["open_door"]
 
-        elif isinstance(boundary, Wall) and not boundary.is_destroyed:
-            hits = boundary.MAX_DAMAGE - boundary.damage
-            actions.extend([("damage_wall", target)] * hits)
-            ap_cost += hits * self.ACTION_COSTS["damage_wall"]
-            penalty += self.WALL_BREAK_PENALTY
+            elif isinstance(boundary, Wall) and not boundary.is_destroyed:
+                hits = boundary.MAX_DAMAGE - boundary.damage
+                actions.extend([("damage_wall", target)] * hits)
+                ap_cost += hits * self.ACTION_COSTS["damage_wall"]
+                penalty += self.WALL_BREAK_PENALTY
 
-        infestation = self.model.get_entity(target, RatKing)
-        if infestation is not None:
-            actions.append(("reduce_rat_king", infestation))
-            ap_cost += self.ACTION_COSTS["reduce_rat_king"]
+        infestation = self.model.get_entity(target, (RatSwarm, RatKing))
+
+        if isinstance(infestation, RatSwarm):
+            actions.append(("treat_rat_swarm", infestation))
+            ap_cost += self.ACTION_COSTS["treat_rat_swarm"]
+
+        elif isinstance(infestation, RatKing):
+            actions.append(("treat_rat_king", infestation))
+            ap_cost += self.ACTION_COSTS["treat_rat_king"]
 
         actions.append(("move", target))
         ap_cost += move_cost
@@ -260,7 +279,7 @@ class PlagueDoctorAgent(mesa.Agent):
             "actions": actions,
         }
 
-    def dijkstra(self, start, carrying=False):
+    def dijkstra(self, start, carrying=False, cleared_edges=None):
         """Calculate the cheapest weighted route from start to every board cell."""
         scores = {start: 0}
         ap_costs = {start: 0}
@@ -276,7 +295,7 @@ class PlagueDoctorAgent(mesa.Agent):
                 continue
 
             for neighbor in self.model.get_neighbors(current):
-                transition = self.get_path_transition(current, neighbor, carrying)
+                transition = self.get_path_transition(current, neighbor, carrying, cleared_edges)
                 if transition is None:
                     continue
 
@@ -316,6 +335,33 @@ class PlagueDoctorAgent(mesa.Agent):
             plan.extend(segment)
 
         return plan
+
+    def get_cleared_edges(self, plan, start):
+        """Return doors opened and walls destroyed by a completed hypothetical route."""
+        cleared_edges = set()
+        current = start
+
+        for kind, target in plan:
+            if kind in ("open_door", "damage_wall"):
+                cleared_edges.add(self.model.edge_key(current, target))
+            elif kind == "move":
+                current = target
+
+        return cleared_edges
+
+    def board_is_controlled(self):
+        """A board is controlled while at most two RatKings are active."""
+        rat_kings = sum(
+            1 for entity in self.model.agents
+            if isinstance(entity, RatKing) and entity.pos is not None
+        )
+        return rat_kings <= self.CONTROLLED_RAT_KING_LIMIT
+
+    def get_task_bonus(self, kind):
+        """Favor reaching an exit with a revealed or carried Patient."""
+        if kind in ("rescue", "rescue_carried") and self.board_is_controlled():
+            return self.RESCUE_BONUS
+        return 0
 
     def get_treatment_transition(self, position, infestation):
         """Return actions and cost needed to treat an infestation from one position."""
@@ -388,6 +434,7 @@ class PlagueDoctorAgent(mesa.Agent):
             search_cost = search["scores"][best_exit]
             ap_cost = search["ap_costs"][best_exit]
             penalty = search["penalties"][best_exit]
+            plan_ap_cost = ap_cost
 
         elif kind == "rescue":
             if target.pos is None:
@@ -398,7 +445,8 @@ class PlagueDoctorAgent(mesa.Agent):
                 return None
 
             to_patient_plan = self.reconstruct_plan(search, target.pos)
-            carrying_search = self.dijkstra(target.pos, carrying=True)
+            cleared_edges = self.get_cleared_edges(to_patient_plan, self.pos)
+            carrying_search = self.dijkstra(target.pos, carrying=True, cleared_edges=cleared_edges)
             reachable_exits = [position for position in self.model.EXTERIOR_ENTRANCES if position in carrying_search["scores"]]
 
             if not reachable_exits:
@@ -413,6 +461,7 @@ class PlagueDoctorAgent(mesa.Agent):
             # Execute only the route to the Patient now. Once picked up,
             # the next intelligent step recalculates the carrying route.
             plan = to_patient_plan + [("pick_up_patient", target)]
+            plan_ap_cost = search["ap_costs"][target.pos]
 
         elif kind == "investigate":
             if target.pos is None:
@@ -426,6 +475,7 @@ class PlagueDoctorAgent(mesa.Agent):
             ap_cost = search["ap_costs"][target.pos]
             penalty = search["penalties"][target.pos]
             plan = self.reconstruct_plan(search, target.pos)
+            plan_ap_cost = ap_cost
 
             if not plan:
                 return None
@@ -465,12 +515,14 @@ class PlagueDoctorAgent(mesa.Agent):
             ap_cost = best["ap"]
             penalty = best["penalty"]
             plan = best["plan"]
+            plan_ap_cost = ap_cost
 
         else:
             return None
 
         claim_penalty = self.get_claim_penalty(task)
-        effective_cost = search_cost + claim_penalty
+        task_bonus = self.get_task_bonus(kind)
+        effective_cost = search_cost + claim_penalty - task_bonus
 
         evaluated = dict(task)
         evaluated.update({
@@ -478,6 +530,8 @@ class PlagueDoctorAgent(mesa.Agent):
             "ap_cost": ap_cost,
             "wall_penalty": penalty,
             "claim_penalty": claim_penalty,
+            "task_bonus": task_bonus,
+            "plan_ap_cost": plan_ap_cost,
             "effective_cost": effective_cost,
             "utility": -effective_cost,
             "plan": plan,
@@ -541,6 +595,10 @@ class PlagueDoctorAgent(mesa.Agent):
 
         self.current_task = evaluated
         action = evaluated["plan"][0]
+
+        if evaluated["plan_ap_cost"] > self.action_points and self.action_points <= 4:
+            self.end_turn()
+            return False
 
         # If the next planned action is currently too expensive,
         # keep the target reserved and continue it next turn.
