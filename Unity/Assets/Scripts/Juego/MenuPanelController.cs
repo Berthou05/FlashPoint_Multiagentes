@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class MenuPanelController : MonoBehaviour
 {
@@ -35,6 +36,17 @@ public class MenuPanelController : MonoBehaviour
         menuCard.anchoredPosition =
             finalPosition + Vector2.up * menuCard.rect.height;
         slideCoroutine = StartCoroutine(SlideMenuDown());
+    }
+
+    // Conecta este método al botón MainMenu del panel de pausa.
+    public void OnClickMainMenu()
+    {
+        if (hourglassButton != null)
+        {
+            hourglassButton.Pause();
+        }
+
+        SceneManager.LoadScene("MainMenu");
     }
 
     private void CloseMenu()

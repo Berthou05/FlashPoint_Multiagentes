@@ -177,6 +177,13 @@ public class SimulationConnection : MonoBehaviour
                     activeDoctorCard.UpdateActiveCard();
                 }
 
+                if (simulationManager != null)
+                {
+                    simulationManager.HandleGameStatus(
+                        currentResponse.state.game_status
+                    );
+                }
+
                 Debug.Log("Conectado con Mesa");
 
                 Debug.Log(
