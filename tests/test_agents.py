@@ -223,6 +223,24 @@ class TestPlagueDoctorActions(unittest.TestCase):
         self.assertTrue(door.is_open)
         self.assertEqual(self.doctor.action_points, 3)
 
+    def test_open_door_event_identifies_the_boundary_for_unity(self):
+        self.model.grid.move_agent(self.doctor, (4, 5))
+        self.doctor.start_turn()
+        self.model.events = []
+
+        self.assertTrue(self.action("open_door", (4, 4)))
+
+        self.assertEqual(self.model.events[0], {
+            "sequence": 1,
+            "type": "door_opened",
+            "id": self.model.get_boundary_id((4, 5), (4, 4)),
+            "ax": 4,
+            "ay": 4,
+            "bx": 4,
+            "by": 5,
+            "open": True,
+        })
+
     def test_action_event_reports_remaining_action_points(self):
         self.model.grid.move_agent(self.doctor, (4, 5))
         self.doctor.start_turn()

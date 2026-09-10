@@ -168,20 +168,33 @@ class PlagueSimulationModel(Model):
         damage_added = boundary.take_damage()
 
         if damage_added and isinstance(boundary, Wall):
+            cells = self.edge_key(cell_a, cell_b)
             self.emit_event(
                 "wall_damaged",
                 id=self.get_boundary_id(cell_a, cell_b),
+                ax=cells[0][0], ay=cells[0][1],
+                bx=cells[1][0], by=cells[1][1],
                 damage=boundary.damage,
+                destroyed=boundary.is_destroyed,
             )
             if not was_destroyed and boundary.is_destroyed:
                 self.emit_event(
                     "wall_destroyed",
                     id=self.get_boundary_id(cell_a, cell_b),
+                    ax=cells[0][0], ay=cells[0][1],
+                    bx=cells[1][0], by=cells[1][1],
+                    damage=boundary.damage,
+                    destroyed=True,
                 )
         elif not was_destroyed and boundary.is_destroyed:
+            cells = self.edge_key(cell_a, cell_b)
             self.emit_event(
                 "door_destroyed",
                 id=self.get_boundary_id(cell_a, cell_b),
+                ax=cells[0][0], ay=cells[0][1],
+                bx=cells[1][0], by=cells[1][1],
+                open=boundary.is_open,
+                destroyed=True,
             )
 
         # Only walls add to the building's 24 structural damage points.

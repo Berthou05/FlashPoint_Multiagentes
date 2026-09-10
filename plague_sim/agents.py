@@ -140,13 +140,29 @@ class PlagueDoctorAgent(mesa.Agent):
 
         elif kind == "open_door":
             self.spend_ap(self.ACTION_COSTS[kind])
-            self.model.get_boundary(self.pos, target).open()
-            self.model.emit_event("door_opened", id=self.model.get_boundary_id(self.pos, target))
+            door = self.model.get_boundary(self.pos, target)
+            door.open()
+            cells = self.model.edge_key(self.pos, target)
+            self.model.emit_event(
+                "door_opened",
+                id=self.model.get_boundary_id(self.pos, target),
+                ax=cells[0][0], ay=cells[0][1],
+                bx=cells[1][0], by=cells[1][1],
+                open=door.is_open,
+            )
 
         elif kind == "close_door":
             self.spend_ap(self.ACTION_COSTS[kind])
-            self.model.get_boundary(self.pos, target).close()
-            self.model.emit_event("door_closed", id=self.model.get_boundary_id(self.pos, target))
+            door = self.model.get_boundary(self.pos, target)
+            door.close()
+            cells = self.model.edge_key(self.pos, target)
+            self.model.emit_event(
+                "door_closed",
+                id=self.model.get_boundary_id(self.pos, target),
+                ax=cells[0][0], ay=cells[0][1],
+                bx=cells[1][0], by=cells[1][1],
+                open=door.is_open,
+            )
 
         elif kind == "damage_wall":
             self.spend_ap(self.ACTION_COSTS[kind])

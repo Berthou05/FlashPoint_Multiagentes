@@ -23,6 +23,9 @@ public class SimulationRenderer : MonoBehaviour
     // Tiempo mínimo para que la card muestre los AP después de cada acción.
     public float actionPointDisplayDuration = 0.15f;
 
+    // Pausa entre cambios visibles que ocurren durante la fase de ambiente.
+    public float environmentEventDisplayDuration = 0.25f;
+
     // Aquí guardamos los objetos que ya existen en Unity.
     // El número es el ID que manda Mesa.
     private Dictionary<int, GameObject> doctors = new Dictionary<int, GameObject>();
@@ -72,11 +75,20 @@ public class SimulationRenderer : MonoBehaviour
 
         ShowDoctorTurnCircle(doctorTurnId);
 
+        bool inEnvironmentPhase = false;
+
         if (response.events != null)
         {
             for (int i = 0; i < response.events.Length; i++)
             {
                 SimulationEvent simulationEvent = response.events[i];
+
+                if (simulationEvent.type == "environment_started")
+                {
+                    inEnvironmentPhase = true;
+                }
+
+                ApplyVisualEvent(simulationEvent);
 
                 if (simulationEvent.type == "doctor_moved" ||
                     simulationEvent.type == "doctor_knocked_down")
@@ -103,6 +115,20 @@ public class SimulationRenderer : MonoBehaviour
                 {
                     yield return new WaitForSeconds(actionPointDisplayDuration);
                 }
+
+                if (inEnvironmentPhase &&
+                    IsVisualEnvironmentEvent(simulationEvent) &&
+                    environmentEventDisplayDuration > 0f)
+                {
+                    yield return new WaitForSeconds(
+                        environmentEventDisplayDuration
+                    );
+                }
+
+                if (simulationEvent.type == "environment_ended")
+                {
+                    inEnvironmentPhase = false;
+                }
             }
         }
 
@@ -116,6 +142,223 @@ public class SimulationRenderer : MonoBehaviour
         }
 
         ShowDoctorTurnCircle(-1);
+    }
+
+    // Aplica los cambios instantáneos antes de reproducir el siguiente evento.
+    private void ApplyVisualEvent(SimulationEvent simulationEvent)
+    {
+        switch (simulationEvent.type)
+        {
+            case "door_opened":
+            case "door_closed":
+            case "door_destroyed":
+                UpdateDoorByCells(
+                    simulationEvent.ax, simulationEvent.ay,
+                    simulationEvent.bx, simulationEvent.by,
+                    simulationEvent.open, simulationEvent.destroyed
+                );
+                break;
+
+            case "wall_damaged":
+            case "wall_destroyed":
+                UpdateWallByCells(
+                    simulationEvent.ax, simulationEvent.ay,
+                    simulationEvent.bx, simulationEvent.by,
+                    simulationEvent.damage, simulationEvent.destroyed
+                );
+                break;
+
+            case "rat_swarm_created":
+                AddOrMoveEntity(ratSwarms, ratSwarm, "RatSwarm", simulationEvent.id, simulationEvent.x, simulationEvent.y);
+                break;
+            case "rat_swarm_removed":
+                RemoveEntity(ratSwarms, simulationEvent.id);
+                break;
+            case "rat_king_created":
+                AddOrMoveEntity(ratKings, ratKing, "RatKing", simulationEvent.id, simulationEvent.x, simulationEvent.y);
+                break;
+            case "rat_king_removed":
+                RemoveEntity(ratKings, simulationEvent.id);
+                break;
+            case "rat_king_demoted":
+                RemoveEntity(ratKings, simulationEvent.rat_king_id);
+                AddOrMoveEntity(ratSwarms, ratSwarm, "RatSwarm", simulationEvent.rat_swarm_id, simulationEvent.x, simulationEvent.y);
+                break;
+            case "rat_swarm_promoted":
+                RemoveEntity(ratSwarms, simulationEvent.rat_swarm_id);
+                AddOrMoveEntity(ratKings, ratKing, "RatKing", simulationEvent.rat_king_id, simulationEvent.x, simulationEvent.y);
+                break;
+
+            case "poi_created":
+                AddOrMoveEntity(pois, poi, "POI", simulationEvent.id, simulationEvent.x, simulationEvent.y);
+                break;
+            case "poi_destroyed":
+                RemoveEntity(pois, simulationEvent.id);
+                break;
+            case "poi_revealed":
+                RemoveEntity(pois, simulationEvent.poi_id);
+                break;
+
+            case "patient_created":
+            case "patient_dropped":
+                AddOrMovePatient(simulationEvent.id, simulationEvent.x, simulationEvent.y);
+                break;
+            case "patient_picked_up":
+            case "patient_rescued":
+            case "patient_killed":
+                RemoveEntity(patients, simulationEvent.id);
+                break;
+        }
+    }
+
+    private bool IsVisualEnvironmentEvent(SimulationEvent simulationEvent)
+    {
+        switch (simulationEvent.type)
+        {
+            case "door_destroyed":
+            case "wall_damaged":
+            case "wall_destroyed":
+            case "rat_swarm_created":
+            case "rat_swarm_removed":
+            case "rat_king_created":
+            case "rat_king_removed":
+            case "rat_king_demoted":
+            case "rat_swarm_promoted":
+            case "poi_created":
+            case "poi_destroyed":
+            case "poi_revealed":
+            case "patient_created":
+            case "patient_killed":
+            case "patient_rescued":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void AddOrMoveEntity(
+        Dictionary<int, GameObject> entities,
+        GameObject prefab,
+        string objectName,
+        int id,
+        int x,
+        int y
+    )
+    {
+        if (prefab == null)
+        {
+            Debug.LogWarning("No hay prefab para " + objectName + ".");
+            return;
+        }
+
+        Vector3 position = positionConverter.ConvertToUnityPosition(x, y);
+        GameObject entity;
+
+        if (!entities.TryGetValue(id, out entity))
+        {
+            entity = Instantiate(prefab, position, Quaternion.identity);
+            entity.name = objectName + "_" + id;
+            entities.Add(id, entity);
+            return;
+        }
+
+        entity.transform.position = position;
+    }
+
+    private void AddOrMovePatient(int id, int x, int y)
+    {
+        if (patientPrefabs == null || patientPrefabs.Length == 0)
+        {
+            Debug.LogWarning("No hay prefab para Patient.");
+            return;
+        }
+
+        GameObject patientPrefab = patientPrefabs[Random.Range(0, patientPrefabs.Length)];
+        if (patientPrefab == null)
+        {
+            Debug.LogWarning("Hay un prefab vacío en Patient Prefabs.");
+            return;
+        }
+
+        AddOrMoveEntity(patients, patientPrefab, "Patient", id, x, y);
+    }
+
+    private void RemoveEntity(Dictionary<int, GameObject> entities, int id)
+    {
+        GameObject entity;
+        if (entities.TryGetValue(id, out entity))
+        {
+            Destroy(entity);
+            entities.Remove(id);
+        }
+    }
+
+    private void UpdateDoorByCells(
+        int ax,
+        int ay,
+        int bx,
+        int by,
+        bool open,
+        bool destroyed
+    )
+    {
+        GameObject doorsObject = GameObject.Find("Door");
+        if (doorsObject == null)
+        {
+            Debug.LogWarning("No se encontró el objeto Door.");
+            return;
+        }
+
+        Door[] doors = doorsObject.GetComponentsInChildren<Door>(true);
+        for (int i = 0; i < doors.Length; i++)
+        {
+            bool mismasCoordenadas =
+                (doors[i].ax == ax && doors[i].ay == ay && doors[i].bx == bx && doors[i].by == by)
+                ||
+                (doors[i].ax == bx && doors[i].ay == by && doors[i].bx == ax && doors[i].by == ay);
+
+            if (mismasCoordenadas)
+            {
+                doors[i].UpdateDoor(open, destroyed);
+                return;
+            }
+        }
+
+        Debug.LogWarning("No se encontró la puerta del evento.");
+    }
+
+    private void UpdateWallByCells(
+        int ax,
+        int ay,
+        int bx,
+        int by,
+        int damage,
+        bool destroyed
+    )
+    {
+        GameObject wallsObject = GameObject.Find("Walls");
+        if (wallsObject == null)
+        {
+            Debug.LogWarning("No se encontró el objeto Walls.");
+            return;
+        }
+
+        Wall[] walls = wallsObject.GetComponentsInChildren<Wall>(true);
+        for (int i = 0; i < walls.Length; i++)
+        {
+            bool mismasCoordenadas =
+                (walls[i].ax == ax && walls[i].ay == ay && walls[i].bx == bx && walls[i].by == by)
+                ||
+                (walls[i].ax == bx && walls[i].ay == by && walls[i].bx == ax && walls[i].by == ay);
+
+            if (mismasCoordenadas)
+            {
+                walls[i].UpdateWall(damage, destroyed);
+                return;
+            }
+        }
+
+        Debug.LogWarning("No se encontró el muro del evento.");
     }
 
     private void ShowDoctorTurnCircle(int activeDoctorId)

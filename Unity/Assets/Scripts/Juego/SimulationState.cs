@@ -88,6 +88,9 @@ public class SimulationEvent
 
     // Algunos eventos pueden involucrar una segunda entidad
     public int other_id;
+    public int poi_id;
+    public int rat_swarm_id;
+    public int rat_king_id;
 
     // Posición sencilla, usada por eventos como outbreak_started
     public int x;
@@ -109,6 +112,8 @@ public class SimulationEvent
     public int action_points;
     public int action_points_after;
     public int damage;
+    public bool open;
+    public bool destroyed;
 }
 
 
