@@ -1,10 +1,33 @@
 """Main model for the PlaguePoint simulation."""
 
 from mesa import Model
+from mesa.datacollection import DataCollector
 from mesa.space import MultiGrid
 
 from .agents import PlagueDoctorAgent
 from .entities import Door, POI, Patient, RatKing, RatSwarm, Wall
+
+def model_result(model):
+    """Return a simple result label for DataCollector and batch_run."""
+    if not model.game_over:
+        return "running"
+    return "victory" if model.game_won else "defeat"
+
+
+def patients_on_board(model):
+    return sum(isinstance(entity, Patient) and entity.pos is not None for entity in model.agents)
+
+
+def patients_carried(model):
+    return sum(doctor.carried_patient is not None for doctor in model.doctors)
+
+
+def patients_hidden(model):
+    return sum(isinstance(entity, POI) and entity.has_patient for entity in model.agents)
+
+
+def patients_in_pool(model):
+    return sum(model.poi_pool)
 
 
 class PlagueSimulationModel(Model):
@@ -101,11 +124,33 @@ class PlagueSimulationModel(Model):
 
         self.poi_pool = []
 
+        # DataCollector keeps the variables used by Mesa batch_run.
+        # Only model-level reporters are used here so one batch run produces
+        # one row per simulation step instead of one row per agent.
+        self.datacollector = DataCollector(
+            model_reporters={
+                "result": model_result,
+                "end_reason": "end_reason",
+                "turns_completed": "turn",
+                "doctor_turns_started": "doctor_turns_started",
+                "patients_rescued": "patients_rescued",
+                "patients_killed": "patients_killed",
+                "house_damage": "house_damage",
+                "patients_on_board": patients_on_board,
+                "patients_carried": patients_carried,
+                "patients_hidden": patients_hidden,
+                "patients_in_pool": patients_in_pool,
+            }
+        )
+
         self._setup_house()
         self.create_poi_pool()
         self._setup_initial_entities()
         self._setup_initial_doctors()
         self.events = []
+
+        # Store the initial state as step 0.
+        self.datacollector.collect(self)
 
     # ==========================================================
     # House boundaries
@@ -920,15 +965,17 @@ class PlagueSimulationModel(Model):
         return list(self.events)
 
     def step(self):
-        """Mesa-compatible alias for a complete turn."""
-        return self.step_complete_turn()
+        """Run one complete turn and collect its resulting model state."""
+        events = self.step_complete_turn()
+        self.datacollector.collect(self)
+        return events
 
     # ==========================================================
     # Events
     # ==========================================================
 
     def emit_event(self, event_type, **data):
-        """Registra un hecho de simulación con su secuencia local."""
+        """Resgister an event in the simulation."""
         event = {"sequence": len(self.events) + 1, "type": event_type}
         event.update(data)
         self.events.append(event)

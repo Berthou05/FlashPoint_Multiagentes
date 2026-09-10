@@ -366,7 +366,7 @@ class PlagueDoctorAgent(mesa.Agent):
         return cleared_edges
 
     def board_is_controlled(self):
-        """A board is controlled while at most two RatKings are active."""
+        """A board is controlled while RatKings stay within the configured limit."""
         rat_kings = sum(
             1 for entity in self.model.agents
             if isinstance(entity, RatKing) and entity.pos is not None
