@@ -215,6 +215,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8022366601174644043}
     m_Modifications:
+    - target: {fileID: 738858106469016893, guid: 0b4917643e87a7142b4ff1d9956bf59b, type: 3}
+      propertyPath: playOnAwake
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7526836214578524762, guid: 0b4917643e87a7142b4ff1d9956bf59b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.02
@@ -257,11 +261,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9060710103674582421, guid: 0b4917643e87a7142b4ff1d9956bf59b, type: 3}
       propertyPath: m_Name
-      value: ShinnyParticles
+      value: CarryingPatientParticles
       objectReference: {fileID: 0}
     - target: {fileID: 9060710103674582421, guid: 0b4917643e87a7142b4ff1d9956bf59b, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

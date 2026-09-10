@@ -90,6 +90,17 @@ public class SimulationRenderer : MonoBehaviour
 
                 ApplyVisualEvent(simulationEvent);
 
+                if (simulationEvent.type == "patient_picked_up")
+                {
+                    SetDoctorCarryingParticles(doctorTurnId, true);
+                }
+
+                if (simulationEvent.type == "patient_rescued" ||
+                    simulationEvent.type == "patient_dropped")
+                {
+                    SetDoctorCarryingParticles(doctorTurnId, false);
+                }
+
                 if (simulationEvent.type == "doctor_moved" ||
                     simulationEvent.type == "doctor_knocked_down")
                 {
@@ -291,6 +302,19 @@ public class SimulationRenderer : MonoBehaviour
             Destroy(entity);
             entities.Remove(id);
         }
+    }
+
+    private void SetDoctorCarryingParticles(int doctorId, bool active)
+    {
+        if (!doctors.TryGetValue(doctorId, out GameObject doctorObject))
+        {
+            return;
+        }
+
+        ParticleSystem particles = doctorObject.transform.Find("CarryingPatientParticles").GetComponent<ParticleSystem>();
+
+        if (active) particles.Play();
+        else particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
     }
 
     private void UpdateDoorByCells(
