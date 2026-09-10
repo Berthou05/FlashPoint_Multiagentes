@@ -9,7 +9,7 @@ public class SimulationRenderer : MonoBehaviour
     public GameObject ratSwarm;
     public GameObject ratKing;
     public GameObject poi;
-    public GameObject patient;
+    public GameObject[] patientPrefabs;
 
     // Convierte las coordenadas de Mesa a Unity
     public BoardPositionConverter positionConverter;
@@ -347,9 +347,25 @@ public class SimulationRenderer : MonoBehaviour
 
                 if (!patients.ContainsKey(id))
                 {
+                    if (patientPrefabs == null || patientPrefabs.Length == 0)
+                    {
+                        Debug.LogError("Asigna al menos un prefab en Patient Prefabs.");
+                        continue;
+                    }
+
+                    GameObject patientPrefab = patientPrefabs[
+                        Random.Range(0, patientPrefabs.Length)
+                    ];
+
+                    if (patientPrefab == null)
+                    {
+                        Debug.LogError("Hay un prefab vacío en Patient Prefabs.");
+                        continue;
+                    }
+
                     GameObject nuevo =
                         Instantiate(
-                            patient,
+                            patientPrefab,
                             posicion,
                             Quaternion.identity
                         );
