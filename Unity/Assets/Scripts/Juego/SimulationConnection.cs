@@ -20,15 +20,16 @@ public class SimulationConnection : MonoBehaviour
     public ActiveDoctorCardController activeDoctorCard;
     [HideInInspector] public CameraTurnFocus cameraTurnFocus;
 
-
-
+    public SimulationManager simulationManager;
 
     void Start()
     {
         ConfigureCameraFocus();
 
-        // Cuando empieza la escena pedimos el estado actual de la simulación.
-        StartCoroutine(GetState());
+        // Cuando inicia la escena corremos la simulación
+        StartCoroutine(ResetAndStartSimulation());
+            Debug.Log("Esto se vio 1.");
+
     }
 
     // Agrega el controlador a la cámara principal si todavía no está presente.
@@ -62,6 +63,11 @@ public class SimulationConnection : MonoBehaviour
         cameraTurnFocus = cameraFocus;
     }
 
+    private IEnumerator ResetAndStartSimulation()
+    {
+        yield return StartCoroutine(ResetSimulation());
+        simulationManager.OnClickStartAutoPlay();
+    }
 
     public IEnumerator GetState()
     {
