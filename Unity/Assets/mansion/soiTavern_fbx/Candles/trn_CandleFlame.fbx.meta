@@ -3,7 +3,12 @@ guid: ab7299e0594bf4b198e2470ed392ce3b
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_CandleFlame
+    second: {fileID: 2100000, guid: 79cc351e9f5f7481e92d49441e5c908b, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
