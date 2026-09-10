@@ -3,7 +3,22 @@ guid: e7702f55d0bd04edc9831adfd687c85e
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_Cupboard_Bottom
+    second: {fileID: 2100000, guid: 49b14126f2615489294f6dcaedb435b8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_Cupboard_Door
+    second: {fileID: 2100000, guid: 85bc1e42f70e54c699fba79d06245ffa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_Cupboard_Top
+    second: {fileID: 2100000, guid: ab3bbe8c868344be5a01da56eee2099c, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
