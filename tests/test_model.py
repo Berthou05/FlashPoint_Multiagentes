@@ -111,6 +111,23 @@ class TestPlagueSimulationModel(unittest.TestCase):
         self.assertTrue(self.model.can_cross((3, 4), (3, 5)))
         self.assertEqual(self.model.house_damage, 2)
 
+    def test_wall_damage_event_identifies_the_boundary_for_unity(self):
+        self.model.events = []
+
+        self.assertEqual(self.model.damage_boundary((3, 4), (3, 5)), 1)
+
+        self.assertEqual(self.model.events[0], {
+            "sequence": 1,
+            "type": "wall_damaged",
+            "id": self.model.get_boundary_id((3, 4), (3, 5)),
+            "ax": 3,
+            "ay": 4,
+            "bx": 3,
+            "by": 5,
+            "damage": 1,
+            "destroyed": False,
+        })
+
     def test_model_starts_one_skip_doctor_at_an_exterior_door(self):
         expected_positions = [(0, 3)]
 

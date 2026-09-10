@@ -18,14 +18,48 @@ public class SimulationConnection : MonoBehaviour
     // Referencias nuevas para la UI
     public HUDController hudController;
     public ActiveDoctorCardController activeDoctorCard;
+    [HideInInspector] public CameraTurnFocus cameraTurnFocus;
 
 
 
 
     void Start()
     {
+        ConfigureCameraFocus();
+
         // Cuando empieza la escena pedimos el estado actual de la simulación.
         StartCoroutine(GetState());
+    }
+
+    // Agrega el controlador a la cámara principal si todavía no está presente.
+    // Así no es necesario modificar la escena mientras se está trabajando en ella.
+    private void ConfigureCameraFocus()
+    {
+        Camera sceneCamera = Camera.main;
+
+        // La escena actual no usa la etiqueta MainCamera, así que tomamos
+        // la primera cámara disponible como respaldo.
+        if (sceneCamera == null)
+        {
+            sceneCamera = FindAnyObjectByType<Camera>();
+        }
+
+        if (sceneCamera == null)
+        {
+            Debug.LogWarning("No se encontró una cámara en la escena.");
+            return;
+        }
+
+        CameraTurnFocus cameraFocus =
+            sceneCamera.GetComponent<CameraTurnFocus>();
+
+        if (cameraFocus == null)
+        {
+            cameraFocus = sceneCamera.gameObject.AddComponent<CameraTurnFocus>();
+        }
+
+        cameraFocus.connection = this;
+        cameraTurnFocus = cameraFocus;
     }
 
 
