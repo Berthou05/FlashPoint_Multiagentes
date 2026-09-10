@@ -61,6 +61,17 @@ public class SimulationRenderer : MonoBehaviour
             yield break;
         }
 
+        int doctorTurnId = GetDoctorTurnId(response.events);
+
+        if (doctorTurnId >= 0 &&
+            connection != null &&
+            connection.cameraTurnFocus != null)
+        {
+            connection.cameraTurnFocus.BeginDoctorTurn(doctorTurnId);
+        }
+
+        ShowDoctorTurnCircle(doctorTurnId);
+
         if (response.events != null)
         {
             for (int i = 0; i < response.events.Length; i++)
@@ -96,6 +107,68 @@ public class SimulationRenderer : MonoBehaviour
         }
 
         RenderState(response.state);
+
+        if (doctorTurnId >= 0 &&
+            connection != null &&
+            connection.cameraTurnFocus != null)
+        {
+            connection.cameraTurnFocus.EndDoctorTurn();
+        }
+
+        ShowDoctorTurnCircle(-1);
+    }
+
+    private void ShowDoctorTurnCircle(int activeDoctorId)
+    {
+        foreach (KeyValuePair<int, GameObject> doctorEntry in doctors)
+        {
+            SetDoctorCircleActive(
+                doctorEntry.Value,
+                doctorEntry.Key == activeDoctorId
+            );
+        }
+    }
+
+    // El círculo ya existe como hijo del prefab Doctor.
+    public static void SetDoctorCircleActive(
+        GameObject doctorObject,
+        bool isActive
+    )
+    {
+        if (doctorObject == null)
+        {
+            return;
+        }
+
+        Transform[] children =
+            doctorObject.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < children.Length; i++)
+        {
+            if (children[i].name == "DoctorCircle")
+            {
+                children[i].gameObject.SetActive(isActive);
+                return;
+            }
+        }
+    }
+
+    private int GetDoctorTurnId(SimulationEvent[] events)
+    {
+        if (events == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < events.Length; i++)
+        {
+            if (events[i].type == "doctor_turn_started")
+            {
+                return events[i].id;
+            }
+        }
+
+        return -1;
     }
 
     void RenderState(SimulationState state)

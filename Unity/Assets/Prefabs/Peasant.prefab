@@ -123,15 +123,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: c617a724f02f044ddb95763354976d15, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 0.281
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: c617a724f02f044ddb95763354976d15, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1
+      value: 0.45
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: c617a724f02f044ddb95763354976d15, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -0.64
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: c617a724f02f044ddb95763354976d15, type: 3}
       propertyPath: m_LocalRotation.w
@@ -171,10 +171,7 @@ PrefabInstance:
       objectReference: {fileID: 9100000, guid: 47a69302695e614479c355d1899e4afb, type: 2}
     - target: {fileID: 5866666021909216657, guid: c617a724f02f044ddb95763354976d15, type: 3}
       propertyPath: m_WarningMessage
-      value: "\nBinding warning: Some generic clip(s) animate transforms that are
-        already bound by a Humanoid avatar. These transforms can only be changed
-        by Humanoid clips.\n\tTransform 'Armature'\n\tTransform 'Armature'\n\tTransform
-        'Armature'\n\tFrom animation clip 'Armature|Idle_Shield_Loop'"
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6332233123982869353, guid: c617a724f02f044ddb95763354976d15, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
