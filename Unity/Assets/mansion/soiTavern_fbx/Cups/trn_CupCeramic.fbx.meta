@@ -3,7 +3,12 @@ guid: 89b5aaeb79130435cb99acd108ebc81c
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_CupCeramic.001
+    second: {fileID: 2100000, guid: e4c76d69c2b8c4bcd87ac2dcba0e7fd6, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

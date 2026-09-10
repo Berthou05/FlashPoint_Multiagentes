@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: b66a1252dc34f440f9240e6ae955be9e
+guid: 06441b065a3b245748b9f47da9ba2b2a
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
@@ -7,8 +7,53 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: trn_TableRound.002
-    second: {fileID: 2100000, guid: e98217a907bda4f50a005947930dca01, type: 2}
+      name: book.001
+    second: {fileID: 2100000, guid: 4f1f8b8f855994addb9e5ac8e8b4b211, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: book.002
+    second: {fileID: 2100000, guid: 95549651f763542a7802fea75dc6d1e6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: book.003
+    second: {fileID: 2100000, guid: 619f5b37023ce46869b7e71bb6f59b80, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: book.004
+    second: {fileID: 2100000, guid: 8587df4913d594d068fa3ec32b6beb0f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: book.005
+    second: {fileID: 2100000, guid: 141bd8478958246068fbeef87063c224, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: book.007
+    second: {fileID: 2100000, guid: 47f01391d71f84f0f93b2cc9fd0594ca, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: book.008
+    second: {fileID: 2100000, guid: 29fcac79e2b814f10b72c8046e34fc16, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: legno.001
+    second: {fileID: 2100000, guid: 06450677ec92346de9daa8ae9b35677e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: paper
+    second: {fileID: 2100000, guid: 468500a6d12314ce089e2739a07ad0f1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tappeto
+    second: {fileID: 2100000, guid: 870482f68b4a9441f91f49f096ae69ad, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
