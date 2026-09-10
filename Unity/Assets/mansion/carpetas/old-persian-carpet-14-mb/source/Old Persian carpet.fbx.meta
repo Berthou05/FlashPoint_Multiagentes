@@ -3,7 +3,12 @@ guid: 2a91ca9344a394fff86819d5760a3e79
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Old Persian carpet
+    second: {fileID: 2100000, guid: d2476b307a15e49e68a94d52f7ee79c8, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

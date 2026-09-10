@@ -3,7 +3,12 @@ guid: b005c8c9d7b374ea497475b186e6e0e8
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: trn_ChairSimple
+    second: {fileID: 2100000, guid: dab64a79ac0df44cfa4214c40744c752, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
