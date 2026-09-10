@@ -22,10 +22,25 @@ public class Door : MonoBehaviour
     void Awake()
     {
         boxCollider = GetComponent<BoxCollider>();
-
         closedRotation = hinge.localRotation;
 
         AssignCoordinates();
+        ApplyDoorVisual();
+    }
+
+    void OnValidate()
+    {
+        if (hinge == null)
+        {
+            return;
+        }
+
+        if (!Application.isPlaying)
+        {
+            closedRotation = Quaternion.identity;
+        }
+
+        ApplyDoorVisual();
     }
 
     void AssignCoordinates()
@@ -62,30 +77,54 @@ public class Door : MonoBehaviour
         isOpen = open;
         isDestroyed = destroyedState;
 
+        ApplyDoorVisual();
+    }
+
+    void ApplyDoorVisual()
+    {
+        if (hinge == null)
+        {
+            return;
+        }
+
         if (isDestroyed)
         {
-            doorRenderer.material = destroyed;
+            if (doorRenderer != null && destroyed != null)
+            {
+                doorRenderer.material = destroyed;
+            }
 
             hinge.localRotation = closedRotation;
 
-            boxCollider.enabled = false;
+            if (boxCollider != null)
+            {
+                boxCollider.enabled = false;
+            }
         }
         else
         {
-            doorRenderer.material = normal;
+            if (doorRenderer != null && normal != null)
+            {
+                doorRenderer.material = normal;
+            }
 
             if (isOpen)
             {
-                hinge.localRotation =
-                    closedRotation * Quaternion.Euler(0f, 90f, 0f);
+                hinge.localRotation = closedRotation * Quaternion.Euler(0f, 90f, 0f);
 
-                boxCollider.enabled = false;
+                if (boxCollider != null)
+                {
+                    boxCollider.enabled = false;
+                }
             }
             else
             {
                 hinge.localRotation = closedRotation;
 
-                boxCollider.enabled = true;
+                if (boxCollider != null)
+                {
+                    boxCollider.enabled = true;
+                }
             }
         }
     }
