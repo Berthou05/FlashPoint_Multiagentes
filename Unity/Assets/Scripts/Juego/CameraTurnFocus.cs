@@ -14,6 +14,10 @@ public class CameraTurnFocus : MonoBehaviour
     public float doctorFieldOfView = 48f;
     public float doctorOrthographicSize = 8f;
 
+    [Header("Vista de ambiente")]
+    [Range(0f, 1f)]
+    public float environmentPositionFactor = 0.12f;
+
     [Header("Transiciones")]
     public float followSmoothTime = 1.2f;
     public float returnSmoothTime = 1f;
@@ -28,6 +32,8 @@ public class CameraTurnFocus : MonoBehaviour
     private Vector3 movementVelocity;
     private bool isFollowingDoctor;
     private int activeDoctorId = -1;
+    private bool isFocusingEnvironment;
+    private Vector3 environmentPosition;
 
     void Awake()
     {
@@ -46,6 +52,12 @@ public class CameraTurnFocus : MonoBehaviour
     void LateUpdate()
     {
         SimulationState state = GetCurrentState();
+
+        if (isFocusingEnvironment && state != null)
+        {
+            FocusOnEnvironment(state);
+            return;
+        }
 
         if (isFollowingDoctor && state != null)
         {
@@ -87,6 +99,19 @@ public class CameraTurnFocus : MonoBehaviour
         activeDoctorId = -1;
     }
 
+    // El renderer llama este método cuando una infestación cambia durante
+    // la fase de ambiente.
+    public void BeginEnvironmentFocus(Vector3 infestationPosition)
+    {
+        environmentPosition = infestationPosition;
+        isFocusingEnvironment = true;
+    }
+
+    public void EndEnvironmentFocus()
+    {
+        isFocusingEnvironment = false;
+    }
+
     private void FocusOnDoctor(Vector3 doctorPosition, SimulationState state)
     {
         Vector3 boardCenter = GetBoardCenter(state);
@@ -99,6 +124,8 @@ public class CameraTurnFocus : MonoBehaviour
             maxDepthDisplacement
         );
 
+        // Conservamos el ángulo original de la casa. Solo desplazamos la
+        // vista ligeramente hacia el doctor y con límites seguros.
         transform.position = Vector3.SmoothDamp(
             transform.position,
             desiredPosition,
@@ -106,9 +133,36 @@ public class CameraTurnFocus : MonoBehaviour
             followSmoothTime
         );
 
-        // Conservamos el ángulo cenital original de la casa. Si la cámara
-        // gira hacia cada médico, puede terminar mostrando el exterior.
-        SetZoom(doctorFieldOfView, doctorOrthographicSize);
+        SetZoom(
+            doctorFieldOfView,
+            doctorOrthographicSize,
+            zoomSpeed
+        );
+    }
+
+    private void FocusOnEnvironment(SimulationState state)
+    {
+        Vector3 desiredPosition = CalculateFollowPosition(
+            originalPosition,
+            GetBoardCenter(state),
+            environmentPosition,
+            environmentPositionFactor,
+            maxHorizontalDisplacement,
+            maxDepthDisplacement
+        );
+
+        transform.position = Vector3.SmoothDamp(
+            transform.position,
+            desiredPosition,
+            ref movementVelocity,
+            followSmoothTime
+        );
+
+        SetZoom(
+            originalFieldOfView,
+            originalOrthographicSize,
+            zoomSpeed
+        );
     }
 
     // Mantiene la composición de la cámara original y solo la desplaza
@@ -172,10 +226,18 @@ public class CameraTurnFocus : MonoBehaviour
             Time.deltaTime * rotationSpeed
         );
 
-        SetZoom(originalFieldOfView, originalOrthographicSize);
+        SetZoom(
+            originalFieldOfView,
+            originalOrthographicSize,
+            zoomSpeed
+        );
     }
 
-    private void SetZoom(float fieldOfView, float orthographicSize)
+    private void SetZoom(
+        float fieldOfView,
+        float orthographicSize,
+        float speed
+    )
     {
         if (sceneCamera == null)
         {
@@ -187,7 +249,7 @@ public class CameraTurnFocus : MonoBehaviour
             sceneCamera.orthographicSize = Mathf.Lerp(
                 sceneCamera.orthographicSize,
                 orthographicSize,
-                Time.deltaTime * zoomSpeed
+                Time.deltaTime * speed
             );
         }
         else
@@ -195,7 +257,7 @@ public class CameraTurnFocus : MonoBehaviour
             sceneCamera.fieldOfView = Mathf.Lerp(
                 sceneCamera.fieldOfView,
                 fieldOfView,
-                Time.deltaTime * zoomSpeed
+                Time.deltaTime * speed
             );
         }
     }

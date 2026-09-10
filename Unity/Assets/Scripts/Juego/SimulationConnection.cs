@@ -77,7 +77,7 @@ public class SimulationConnection : MonoBehaviour
 
     // Estas tres funciones pueden conectarse directamente a botones de Unity.
     // El servidor decide todas las acciones; Unity solo solicita una fase.
-    public IEnumerator ResetSimulation(string strategy = "intelligent", int numAgents = 4, int seed = 0)
+    public IEnumerator ResetSimulation(string strategy = "intelligent", int numAgents = 6, int seed = 25)
     {
         ResetRequest reset = new ResetRequest();
         reset.strategy = strategy;

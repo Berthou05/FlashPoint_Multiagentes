@@ -24,7 +24,7 @@ public class SimulationRenderer : MonoBehaviour
     public float actionPointDisplayDuration = 0.15f;
 
     // Pausa entre cambios visibles que ocurren durante la fase de ambiente.
-    public float environmentEventDisplayDuration = 0.25f;
+    public float environmentEventDisplayDuration = 1.2f;
 
     // Aquí guardamos los objetos que ya existen en Unity.
     // El número es el ID que manda Mesa.
@@ -90,6 +90,12 @@ public class SimulationRenderer : MonoBehaviour
 
                 ApplyVisualEvent(simulationEvent);
 
+                if (inEnvironmentPhase &&
+                    IsInfestationEvent(simulationEvent))
+                {
+                    FocusOnEnvironmentInfestation(simulationEvent);
+                }
+
                 if (simulationEvent.type == "patient_picked_up")
                 {
                     SetDoctorCarryingParticles(doctorTurnId, true);
@@ -139,6 +145,12 @@ public class SimulationRenderer : MonoBehaviour
                 if (simulationEvent.type == "environment_ended")
                 {
                     inEnvironmentPhase = false;
+
+                    if (connection != null &&
+                        connection.cameraTurnFocus != null)
+                    {
+                        connection.cameraTurnFocus.EndEnvironmentFocus();
+                    }
                 }
             }
         }
@@ -153,6 +165,11 @@ public class SimulationRenderer : MonoBehaviour
         }
 
         ShowDoctorTurnCircle(-1);
+
+        if (connection != null && connection.cameraTurnFocus != null)
+        {
+            connection.cameraTurnFocus.EndEnvironmentFocus();
+        }
     }
 
     // Aplica los cambios instantáneos antes de reproducir el siguiente evento.
@@ -245,6 +262,43 @@ public class SimulationRenderer : MonoBehaviour
             default:
                 return false;
         }
+    }
+
+    private bool IsInfestationEvent(SimulationEvent simulationEvent)
+    {
+        switch (simulationEvent.type)
+        {
+            case "rat_swarm_created":
+            case "rat_swarm_removed":
+            case "rat_king_created":
+            case "rat_king_removed":
+            case "rat_king_demoted":
+            case "rat_swarm_promoted":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void FocusOnEnvironmentInfestation(
+        SimulationEvent simulationEvent
+    )
+    {
+        if (connection == null ||
+            connection.cameraTurnFocus == null ||
+            positionConverter == null)
+        {
+            return;
+        }
+
+        Vector3 infestationPosition = positionConverter.ConvertToUnityPosition(
+            simulationEvent.x,
+            simulationEvent.y
+        );
+
+        connection.cameraTurnFocus.BeginEnvironmentFocus(
+            infestationPosition
+        );
     }
 
     private void AddOrMoveEntity(

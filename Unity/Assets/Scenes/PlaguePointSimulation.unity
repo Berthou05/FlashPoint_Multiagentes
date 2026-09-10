@@ -27073,7 +27073,7 @@ MonoBehaviour:
   connection: {fileID: 761049286}
   doctorMoveDuration: 0.8
   actionPointDisplayDuration: 0.35
-  environmentEventDisplayDuration: 0.25
+  environmentEventDisplayDuration: 1.2
 --- !u!114 &1411169036
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36810,15 +36810,16 @@ MonoBehaviour:
   m_Name: CameraTurnFocus
   m_EditorClassIdentifier: Assembly-CSharp::CameraTurnFocus
   connection: {fileID: 761049286}
-  followPositionFactor: 0.3
-  maxHorizontalDisplacement: 2.5
-  maxDepthDisplacement: 2
-  doctorFieldOfView: 48
+  followPositionFactor: 0.15
+  maxHorizontalDisplacement: 1.25
+  maxDepthDisplacement: 1
+  doctorFieldOfView: 45
   doctorOrthographicSize: 8
+  environmentPositionFactor: 0.18
   followSmoothTime: 1.2
   returnSmoothTime: 1
   rotationSpeed: 2
-  zoomSpeed: 1.2
+  zoomSpeed: 4
 --- !u!82 &1930420012
 AudioSource:
   m_ObjectHideFlags: 0
